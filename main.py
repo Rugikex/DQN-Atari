@@ -1,4 +1,5 @@
 from collections import deque
+import os
 import random
 
 import gymnasium as gym
@@ -7,10 +8,14 @@ import tensorflow as tf
 
 from dql import DeepQLearning
 from stacked_frames import StackedFrames
+from policy import EpsilonGreedyPolicy
 
+
+game_name = 'Asterix'
+version = 4
 
 env = gym.make(
-    'Asterix-v4',
+    f"{game_name}-v{version}",
     mode=0,
     difficulty=0,
     obs_type='rgb',
@@ -30,9 +35,9 @@ stacked_frames = StackedFrames(4)
 
 # TODO: Change hyperparameters
 replay_memory = deque(maxlen=300)
-M = 10
+M = 50
 T = 100
-epsilon = 0.1
+epsilon = EpsilonGreedyPolicy(1)
 C = 1
 C_max = 50
 
@@ -48,10 +53,9 @@ for episode in range(1, M + 1):
     memory_state = stacked_frames.get_frames()
 
     for t in range(1, T + 1):
-        # TODO: Decay epsilon
         # Choose an action using epsilon-greedy policy
         action: int
-        if random.uniform(0, 1) < epsilon:
+        if random.uniform(0, 1) < epsilon.get_epsilon():
             # Choose a random action
             action = env.action_space.sample()
         else:
@@ -104,4 +108,4 @@ for episode in range(1, M + 1):
         state = next_state
         C = min(C_max, C + 1)
 
-# TODO: Save the model
+agent.save_weights(os.path.join(os.getcwd(), 'models', f'{game_name}_v{version}'))

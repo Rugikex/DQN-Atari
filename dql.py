@@ -21,4 +21,3 @@ class DeepQLearning(Model):
         x = self.flatten(x)
         x = self.fc1(x)
         return self.fc2(x)
-    
