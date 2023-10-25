@@ -101,11 +101,16 @@ for episode in range(1, M + 1):
             target_agent.set_weights(agent.get_weights())
             C = 0
 
-        # TODO: Maybe just reset the environment instead of breaking
         if done:
-            break
+            state, _ = env.reset()
+            stacked_frames.reset(state)
+            memory_state = stacked_frames.get_frames()
+        else:
+            state = next_state
 
-        state = next_state
         C = min(C_max, C + 1)
+
+    epsilon.update_epsilon()
+
 
 agent.save_weights(os.path.join(os.getcwd(), 'models', f'{game_name}_v{version}'))

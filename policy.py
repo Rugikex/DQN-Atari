@@ -5,8 +5,7 @@ class EpsilonGreedyPolicy():
         self.epsilon_min = epsilon_min
 
     def get_epsilon(self):
-        epsilon = self.epsilon
-        if self.epsilon > self.epsilon_min:
-            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-
-        return epsilon
+        return self.epsilon
+    
+    def update_epsilon(self):
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
