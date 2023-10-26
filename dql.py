@@ -2,6 +2,7 @@ from tensorflow import expand_dims
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 
+
 class DeepQLearning(Model):
     def __init__(self, num_actions, activation='relu'):
         super(DeepQLearning, self).__init__()
@@ -20,4 +21,4 @@ class DeepQLearning(Model):
         x = self.conv3(x)
         x = self.flatten(x)
         x = self.fc1(x)
-        return self.fc2(x)
+        return self.fc2(x)[0] # Remove the extra dimension

@@ -3,6 +3,7 @@ from collections import deque
 import cv2
 import numpy as np
 
+
 class StackedFrames():
     def __init__(self, stack_size: int):
         self.frames: deque = deque(maxlen=stack_size)

@@ -1,5 +1,4 @@
 import os
-import random
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +7,7 @@ from dql import DeepQLearning
 from stacked_frames import StackedFrames
 
 
-game_name = 'VideoPinball'
+game_name = 'Assault'
 version = 4
 difficulty = 0
 

@@ -55,14 +55,16 @@ optimizer = tf.keras.optimizers.experimental.RMSprop(
     momentum=0.95,
 )
 
+
 for episode in tqdm(range(1, M + 1), desc='Episodes'):
     state, _ = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
 
-    total_reward = 0
+    total_reward: np.float64 = 0.0
 
-    for t in tqdm(range(1, T + 1), desc='Steps', leave=False):
+    step_bar = tqdm(range(1, T + 1), desc=f'Steps - Total reward: {total_reward}', leave=False)
+    for t in step_bar:
         # Choose an action using epsilon-greedy policy
         action: int
         if random.uniform(0, 1) < epsilon.get_epsilon():
@@ -71,7 +73,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
         else:
             # Choose the action with the highest Q-value
             q_values = agent(stacked_frames.get_frames())
-            action = np.argmax(q_values[0])
+            action = np.argmax(q_values)
 
         next_state, reward, done, _, _ = env.step(action)
         stacked_frames.append(next_state)
@@ -79,6 +81,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         total_reward += real_reward
 
+        # TODO: Is it the good done?
         # Store the transition in the replay memory
         replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
         memory_state = stacked_frames.get_frames()
@@ -91,16 +94,12 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         # Perform Q-network update
         for state_batch, action_batch, reward_batch, next_state_batch, done_batch in minibatch:
-            target = reward_batch
-            if not done_batch:
-                target = reward_batch + gamma * np.max(target_agent(next_state_batch))
-                target = np.sign(target)
-            
             # TODO: Recheck this
             with tf.GradientTape() as tape:
+                target = reward_batch + gamma * tf.reduce_max(target_agent(next_state_batch), axis=0) * (1 - done_batch)
                 q_values = agent(state_batch)
                 # TODO: L1 then L2 loss (prof's tip)
-                loss = tf.reduce_mean(tf.square(target - q_values[0][action_batch]))
+                loss = tf.reduce_mean(tf.square(target - q_values[action_batch]))
             gradients = tape.gradient(loss, agent.trainable_variables)
             optimizer.apply_gradients(zip(gradients, agent.trainable_variables))
 
@@ -118,7 +117,12 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         C = min(C_max, C + 1)
 
-    epsilon.update_epsilon()
+        step_bar.set_description(f'Steps - Total reward: {total_reward}')
+        step_bar.update()
+
+        # TODO: In which loop should we update epsilon?
+        epsilon.update_epsilon()
+    step_bar.close()
 
 
 agent.save_weights(os.path.join(os.getcwd(), 'models', f'{game_name}_v{version}'))
