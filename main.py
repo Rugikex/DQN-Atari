@@ -5,22 +5,23 @@ import random
 import gymnasium as gym
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 
 from dql import DeepQLearning
 from stacked_frames import StackedFrames
 from policy import EpsilonGreedyPolicy
 
 
-game_name = 'Asterix'
+game_name = 'Assault'
 version = 4
+difficulty = 0
 
 env = gym.make(
     f"{game_name}-v{version}",
     mode=0,
-    difficulty=0,
+    difficulty=difficulty,
     obs_type='rgb',
     frameskip=5,
-    # repeat_action_probability=None,
     full_action_space=True,
     render_mode='rgb_array'
 )
@@ -34,25 +35,34 @@ target_agent.set_weights(agent.get_weights())
 stacked_frames = StackedFrames(4)
 
 # TODO: Change hyperparameters
-replay_memory = deque(maxlen=300)
-M = 50
-T = 100
-epsilon = EpsilonGreedyPolicy(1)
+# replay_memory = deque(maxlen=3000)
+# M = 50
+# T = 250
+# C = 1
+# C_max = 300
+
+replay_memory = deque(maxlen=200)
+M = 20
+T = 50
 C = 1
-C_max = 50
+C_max = 75
 
 minibatch_size = 32
 gamma = 0.99
-optimizer = tf.optimizers.Adam(learning_rate=0.00025)
+epsilon = EpsilonGreedyPolicy(1.0)
+optimizer = tf.keras.optimizers.experimental.RMSprop(
+    learning_rate=0.00025,
+    momentum=0.95,
+)
 
-
-for episode in range(1, M + 1):
-    print(f'Episode {episode}')
+for episode in tqdm(range(1, M + 1), desc='Episodes'):
     state, _ = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
 
-    for t in range(1, T + 1):
+    total_reward = 0
+
+    for t in tqdm(range(1, T + 1), desc='Steps', leave=False):
         # Choose an action using epsilon-greedy policy
         action: int
         if random.uniform(0, 1) < epsilon.get_epsilon():
@@ -67,8 +77,7 @@ for episode in range(1, M + 1):
         stacked_frames.append(next_state)
         real_reward = np.sign(reward)
 
-        if t % 10 == 0:
-            print(f'Step {t}, Reward: {real_reward}')
+        total_reward += real_reward
 
         # Store the transition in the replay memory
         replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
@@ -84,8 +93,8 @@ for episode in range(1, M + 1):
         for state_batch, action_batch, reward_batch, next_state_batch, done_batch in minibatch:
             target = reward_batch
             if not done_batch:
-                # TODO: Have to np.sign() the reward?
                 target = reward_batch + gamma * np.max(target_agent(next_state_batch))
+                target = np.sign(target)
             
             # TODO: Recheck this
             with tf.GradientTape() as tape:
@@ -93,7 +102,6 @@ for episode in range(1, M + 1):
                 # TODO: L1 then L2 loss (prof's tip)
                 loss = tf.reduce_mean(tf.square(target - q_values[0][action_batch]))
             gradients = tape.gradient(loss, agent.trainable_variables)
-            # TODO: Normalize gradients?
             optimizer.apply_gradients(zip(gradients, agent.trainable_variables))
 
         # Update the target network every C steps
