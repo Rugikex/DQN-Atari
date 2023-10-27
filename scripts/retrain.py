@@ -2,6 +2,7 @@ from collections import deque
 import os
 import pickle
 import random
+import re
 import sys
 
 import gymnasium as gym
@@ -31,7 +32,7 @@ env = gym.make(
 )
 
 
-model_path, replay_memory_path = get_model_path(game_name, sys.argv[4])
+model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
 
 n_actions = env.action_space.n
 
@@ -45,9 +46,9 @@ stacked_frames = StackedFrames(4)
 replay_memory: deque
 with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:
     replay_memory = pickle.load(f)
-M = parameters.M
+M = parameters.M * int(sys.argv[4])
 T = parameters.T
-epoque_already_played = int(sys.argv[4]) if sys.argv[4] else 0
+epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_path).group(1))
 C = (1 + epoque_already_played * parameters.T) % parameters.C_max
 C_max = parameters.C_max
 
@@ -66,7 +67,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
     state, info = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
-    lifes = info['lives']
+    lives = info['lives']
 
     total_reward: np.float64 = 0.0
 
@@ -84,8 +85,8 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         next_state, reward, done, _, info = env.step(action)
         stacked_frames.append(next_state)
-        if info['lives'] != lifes:
-            lifes = info['lives']
+        if info['lives'] != lives:
+            lives = info['lives']
             reward = -1
         real_reward = np.sign(reward)
 
@@ -120,7 +121,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
             state, info = env.reset()
             stacked_frames.reset(state)
             memory_state = stacked_frames.get_frames()
-            lifes = info['lives']
+            lives = info['lives']
         else:
             state = next_state
 

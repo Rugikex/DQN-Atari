@@ -38,7 +38,7 @@ target_agent.set_weights(agent.get_weights())
 stacked_frames = StackedFrames(4)
 
 replay_memory = deque(maxlen=parameters.N)
-M = parameters.M
+M = parameters.M * int(sys.argv[4])
 T = parameters.T
 C = 1
 C_max = parameters.C_max
@@ -58,7 +58,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
     state, info = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
-    lifes = info['lives']
+    lives = info['lives']
 
     total_reward: np.float64 = 0.0
 
@@ -76,8 +76,8 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         next_state, reward, done, _, info = env.step(action)
         stacked_frames.append(next_state)
-        if info['lives'] != lifes:
-            lifes = info['lives']
+        if info['lives'] != lives:
+            lives = info['lives']
             reward = -1
         real_reward = np.sign(reward)
 
@@ -112,7 +112,7 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
             state, info = env.reset()
             stacked_frames.reset(state)
             memory_state = stacked_frames.get_frames()
-            lifes = info['lives']
+            lives = info['lives']
         else:
             state = next_state
 

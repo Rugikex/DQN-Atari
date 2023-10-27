@@ -38,7 +38,7 @@ T = 1000
 state, info = env.reset()
 stacked_frames.reset(state)
 total_reward = 0
-lifes = info['lives']
+lives = info['lives']
 
 for t in range(1, T + 1):
     q_values = agent(stacked_frames.get_frames())
@@ -46,8 +46,8 @@ for t in range(1, T + 1):
 
     next_state, reward, done, _, info = env.step(action)
     stacked_frames.append(next_state)
-    if info['lives'] != lifes:
-        lifes = info['lives']
+    if info['lives'] != lives:
+        lives = info['lives']
         reward = -1
     real_reward = np.sign(reward)
 
