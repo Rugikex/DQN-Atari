@@ -5,12 +5,11 @@ class EpsilonGreedyPolicy():
         self.epsilon_end = epsilon_end
         for _ in range(epoque_already_played):
             self.update_epsilon()
+            if self.epsilon == self.epsilon_end:
+                break
 
     def get_epsilon(self):
         return self.epsilon
     
     def update_epsilon(self):
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
-
-    def has_reached_epsilon_end(self):
-        return self.epsilon == self.epsilon_end

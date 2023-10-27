@@ -1,30 +1,54 @@
 from collections import deque
 import os
 import random
+import sys
 
 import gymnasium as gym
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 
-from dql import DeepQLearning
-from stacked_frames import StackedFrames
-from policy import EpsilonGreedyPolicy
+sys.path.append(os.path.join(os.getcwd()))
+
+from classes.dql import DeepQLearning
+from classes.stacked_frames import StackedFrames
+from classes.policy import EpsilonGreedyPolicy
+import parameters
 
 
-game_name = 'Assault'
-version = 4
-difficulty = 0
+game_name = sys.argv[1]
 
 env = gym.make(
-    f"{game_name}-v{version}",
-    mode=0,
-    difficulty=difficulty,
+    game_name,
+    mode=sys.argv[2],
+    difficulty=sys.argv[3],
     obs_type='rgb',
     frameskip=6,
     full_action_space=True,
     render_mode='rgb_array'
 )
+
+
+max_file = None
+
+if sys.argv[4]:
+    max_file = f'ep_{sys.argv[4]}'
+    if not os.path.isfile(os.path.join('models', game_name, max_file)):
+        raise Exception('No model found')
+else:
+    max_number = 0
+    for filename in os.listdir(os.path.join('models', game_name)):
+        if filename.startswith('ep_'):
+            # Extract the number of episode from the filename
+            number = int(filename.split('_')[1])
+
+            # Check if this number is greater than the current max_number
+            if number > max_number:
+                max_number = number
+                max_file = filename
+
+if not max_file:
+    raise Exception('No model found')
 
 n_actions = env.action_space.n
 
@@ -34,24 +58,17 @@ target_agent.set_weights(agent.get_weights())
 
 stacked_frames = StackedFrames(4)
 
-# TODO: Change hyperparameters
-# replay_memory = deque(maxlen=3000)
-# M = 50
-# T = 250
-# C = 1
-# C_max = 300
-
-replay_memory = deque(maxlen=400)
-M = 10
-T = 150
+replay_memory = deque(maxlen=parameters.N)
+M = parameters.M
+T = parameters.T
 C = 1
-C_max = 175
+C_max = parameters.C_max
 
 minibatch_size = 32
 gamma = 0.99
 epsilon = EpsilonGreedyPolicy(1.0)
 optimizer = tf.keras.optimizers.experimental.RMSprop(
-    learning_rate=0.00025,
+    learning_rate=0.0025,
     momentum=0.95,
 )
 
@@ -134,7 +151,10 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
 env.close()
 
-print(f'Max reward: {max_reward}')
+print(f'Max reward in single episode: {max_reward}')
 
 # Save learned model
-agent.save_weights(os.path.join(os.getcwd(), 'models', f'{game_name}_v{version}'))
+if not os.path.exists(os.path.join('models', game_name)):
+    os.makedirs(os.path.join('models', game_name))
+
+agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
