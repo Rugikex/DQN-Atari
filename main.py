@@ -5,7 +5,7 @@ import os
 def main():
     parser = argparse.ArgumentParser(description='Game Launcher')
     
-    parser.add_argument('action', choices=['train', 'retrain' 'play'], help="Specify 'train', 'retrain or 'play'")
+    parser.add_argument('action', choices=['train', 'retrain', 'play'], help="Specify 'train', 'retrain or 'play'")
     parser.add_argument('game_name', type=str, help="Name of the game")
 
     parser.add_argument('--mode', type=int, default=0, help="Game mode")

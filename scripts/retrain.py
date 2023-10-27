@@ -47,12 +47,12 @@ with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:
     replay_memory = pickle.load(f)
 M = parameters.M
 T = parameters.T
-C = 1
+epoque_already_played = int(sys.argv[4]) if sys.argv[4] else 0
+C = (1 + epoque_already_played * parameters.T) % parameters.C_max
 C_max = parameters.C_max
 
 minibatch_size = 32
 gamma = 0.99
-epoque_already_played = int(sys.argv[4]) if sys.argv[4] else 0
 epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
 optimizer = tf.keras.optimizers.experimental.RMSprop(
     learning_rate=0.0025,
@@ -145,3 +145,5 @@ if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
 agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
+with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
+    pickle.dump(replay_memory, file)
