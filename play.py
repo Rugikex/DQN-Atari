@@ -16,7 +16,7 @@ env = gym.make(
     mode=0,
     difficulty=difficulty,
     obs_type='rgb',
-    frameskip=5,
+    frameskip=6,
     full_action_space=True,
     render_mode='human'
 )
@@ -29,16 +29,20 @@ stacked_frames = StackedFrames(4)
 
 T = 1000
 
-state, _ = env.reset()
+state, info = env.reset()
 stacked_frames.reset(state)
 total_reward = 0
+lifes = info['lives']
 
 for t in range(1, T + 1):
     q_values = agent(stacked_frames.get_frames())
-    action = np.argmax(q_values[0])
+    action = np.argmax(q_values)
 
-    next_state, reward, done, _, _ = env.step(action)
+    next_state, reward, done, _, info = env.step(action)
     stacked_frames.append(next_state)
+    if info['lives'] != lifes:
+        lifes = info['lives']
+        reward = -1
     real_reward = np.sign(reward)
 
     total_reward += real_reward

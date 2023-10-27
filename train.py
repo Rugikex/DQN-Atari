@@ -21,7 +21,7 @@ env = gym.make(
     mode=0,
     difficulty=difficulty,
     obs_type='rgb',
-    frameskip=5,
+    frameskip=6,
     full_action_space=True,
     render_mode='rgb_array'
 )
@@ -41,11 +41,11 @@ stacked_frames = StackedFrames(4)
 # C = 1
 # C_max = 300
 
-replay_memory = deque(maxlen=200)
-M = 20
-T = 50
+replay_memory = deque(maxlen=400)
+M = 10
+T = 150
 C = 1
-C_max = 75
+C_max = 175
 
 minibatch_size = 32
 gamma = 0.99
@@ -55,18 +55,21 @@ optimizer = tf.keras.optimizers.experimental.RMSprop(
     momentum=0.95,
 )
 
+max_reward = -np.inf
+
 
 for episode in tqdm(range(1, M + 1), desc='Episodes'):
-    state, _ = env.reset()
+    state, info = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
+    lifes = info['lives']
 
     total_reward: np.float64 = 0.0
 
-    step_bar = tqdm(range(1, T + 1), desc=f'Steps - Total reward: {total_reward}', leave=False)
+    step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} - Steps', leave=False)
     for t in step_bar:
         # Choose an action using epsilon-greedy policy
-        action: int
+        action: np.int64
         if random.uniform(0, 1) < epsilon.get_epsilon():
             # Choose a random action
             action = env.action_space.sample()
@@ -75,13 +78,15 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
             q_values = agent(stacked_frames.get_frames())
             action = np.argmax(q_values)
 
-        next_state, reward, done, _, _ = env.step(action)
+        next_state, reward, done, _, info = env.step(action)
         stacked_frames.append(next_state)
+        if info['lives'] != lifes:
+            lifes = info['lives']
+            reward = -1
         real_reward = np.sign(reward)
 
         total_reward += real_reward
 
-        # TODO: Is it the good done?
         # Store the transition in the replay memory
         replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
         memory_state = stacked_frames.get_frames()
@@ -94,7 +99,6 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
         # Perform Q-network update
         for state_batch, action_batch, reward_batch, next_state_batch, done_batch in minibatch:
-            # TODO: Recheck this
             with tf.GradientTape() as tape:
                 target = reward_batch + gamma * tf.reduce_max(target_agent(next_state_batch), axis=0) * (1 - done_batch)
                 q_values = agent(state_batch)
@@ -109,20 +113,28 @@ for episode in tqdm(range(1, M + 1), desc='Episodes'):
             C = 0
 
         if done:
-            state, _ = env.reset()
+            state, info = env.reset()
             stacked_frames.reset(state)
             memory_state = stacked_frames.get_frames()
+            lifes = info['lives']
         else:
             state = next_state
 
         C = min(C_max, C + 1)
 
-        step_bar.set_description(f'Steps - Total reward: {total_reward}')
+        step_bar.set_description(f'Total reward: {total_reward} - Steps')
         step_bar.update()
 
-        # TODO: In which loop should we update epsilon?
-        epsilon.update_epsilon()
     step_bar.close()
+    
+    epsilon.update_epsilon()
 
+    if total_reward > max_reward:
+        max_reward = total_reward
 
+env.close()
+
+print(f'Max reward: {max_reward}')
+
+# Save learned model
 agent.save_weights(os.path.join(os.getcwd(), 'models', f'{game_name}_v{version}'))
