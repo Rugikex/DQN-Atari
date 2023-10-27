@@ -5,7 +5,7 @@ import os
 def main():
     parser = argparse.ArgumentParser(description='Game Launcher')
     
-    parser.add_argument('action', choices=['train', 'play'], help="Specify 'train' or 'play'")
+    parser.add_argument('action', choices=['train', 'retrain' 'play'], help="Specify 'train', 'retrain or 'play'")
     parser.add_argument('game_name', type=str, help="Name of the game")
 
     parser.add_argument('--mode', type=int, default=0, help="Game mode")
@@ -18,6 +18,10 @@ def main():
     if args.action == 'train':
         script_path = os.path.join('scripts', 'train.py')
         os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty}")
+        
+    elif args.action == 'retrain':
+        script_path = os.path.join('scripts', 'retrain.py')
+        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.ep}")
 
     elif args.action == 'play':
         script_path = os.path.join('scripts', 'play.py')

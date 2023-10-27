@@ -3,4 +3,4 @@
 TODO: Add description
 
 
-TODO: create script to retrain model
+TODO: have to skip 6 frames

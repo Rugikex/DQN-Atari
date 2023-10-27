@@ -1,5 +1,6 @@
 from collections import deque
 import os
+import pickle
 import random
 import sys
 
@@ -13,6 +14,7 @@ sys.path.append(os.path.join(os.getcwd()))
 from classes.dql import DeepQLearning
 from classes.stacked_frames import StackedFrames
 from classes.policy import EpsilonGreedyPolicy
+from global_functions import get_model_path
 import parameters
 
 
@@ -20,45 +22,29 @@ game_name = sys.argv[1]
 
 env = gym.make(
     game_name,
-    mode=sys.argv[2],
-    difficulty=sys.argv[3],
+    mode=int(sys.argv[2]),
+    difficulty=int(sys.argv[3]),
     obs_type='rgb',
-    frameskip=6,
+    frameskip=5,
     full_action_space=True,
     render_mode='rgb_array'
 )
 
 
-max_file = None
-
-if sys.argv[4]:
-    max_file = f'ep_{sys.argv[4]}'
-    if not os.path.isfile(os.path.join('models', game_name, max_file)):
-        raise Exception('No model found')
-else:
-    max_number = 0
-    for filename in os.listdir(os.path.join('models', game_name)):
-        if filename.startswith('ep_'):
-            # Extract the number of episode from the filename
-            number = int(filename.split('_')[1])
-
-            # Check if this number is greater than the current max_number
-            if number > max_number:
-                max_number = number
-                max_file = filename
-
-if not max_file:
-    raise Exception('No model found')
+model_path, replay_memory_path = get_model_path(game_name, sys.argv[4])
 
 n_actions = env.action_space.n
 
 agent = DeepQLearning(n_actions)
+agent.load_weights(os.path.join('models', game_name, model_path))
 target_agent = DeepQLearning(n_actions)
 target_agent.set_weights(agent.get_weights())
 
 stacked_frames = StackedFrames(4)
 
-replay_memory = deque(maxlen=parameters.N)
+replay_memory: deque
+with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:
+    replay_memory = pickle.load(f)
 M = parameters.M
 T = parameters.T
 C = 1
@@ -66,7 +52,8 @@ C_max = parameters.C_max
 
 minibatch_size = 32
 gamma = 0.99
-epsilon = EpsilonGreedyPolicy(1.0)
+epoque_already_played = int(sys.argv[4]) if sys.argv[4] else 0
+epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
 optimizer = tf.keras.optimizers.experimental.RMSprop(
     learning_rate=0.0025,
     momentum=0.95,

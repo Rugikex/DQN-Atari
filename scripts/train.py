@@ -1,5 +1,6 @@
 from collections import deque
 import os
+import pickle
 import random
 import sys
 
@@ -20,10 +21,10 @@ game_name = sys.argv[1]
 
 env = gym.make(
     game_name,
-    mode=sys.argv[2],
-    difficulty=sys.argv[3],
+    mode=int(sys.argv[2]),
+    difficulty=int(sys.argv[3]),
     obs_type='rgb',
-    frameskip=6,
+    frameskip=5,
     full_action_space=True,
     render_mode='rgb_array'
 )
@@ -131,8 +132,10 @@ env.close()
 
 print(f'Max reward in single episode: {max_reward}')
 
-# Save learned model
+# Save learned model and replay memory
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
 agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
+with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
+    pickle.dump(replay_memory, file)
