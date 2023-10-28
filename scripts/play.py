@@ -19,7 +19,6 @@ env = gym.make(
     mode=int(sys.argv[2]),
     difficulty=int(sys.argv[3]),
     obs_type='rgb',
-    frameskip=5,
     full_action_space=True,
     render_mode='human'
 )
