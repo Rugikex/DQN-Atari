@@ -5,15 +5,12 @@ import re
 import sys
 
 import gymnasium as gym
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tqdm import tqdm
 
 sys.path.append(os.path.join(os.getcwd()))
 
 from classes.dqn import DeepQNetwork
-from classes.stacked_frames import StackedFrames
 from classes.policy import EpsilonGreedyPolicy
 from global_functions import get_model_path, train_model
 import parameters

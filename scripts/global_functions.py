@@ -73,6 +73,7 @@ def train_model(
     max_reward = -np.inf
     C_max = parameters.C_max
     T = parameters.T
+    skip_frames = 4
 
     for _ in tqdm(range(1, M + 1), desc='Episodes'):
         state, info = env.reset()
@@ -94,8 +95,20 @@ def train_model(
                 q_values = agent(stacked_frames.get_frames())
                 action = np.argmax(q_values)
 
-            next_state, reward, done, _, info = env.step(action)
-            stacked_frames.append(next_state)
+
+            next_state: np.ndarray
+            previous_state: np.ndarray
+            reward: float
+            done: bool
+            info: dict
+
+            for skip in range(skip_frames):
+                next_state, reward, done, _, info = env.step(action)
+                # TODO: what happens if we skip a frame and the game ends?
+                if skip == skip_frames - 2:
+                    previous_state = next_state
+
+            stacked_frames.append(next_state, previous_state)
             if info['lives'] != lives:
                 lives = info['lives']
                 reward = -1
@@ -140,7 +153,6 @@ def train_model(
             C = min(C_max, C + 1)
 
             step_bar.set_description(f'Total reward: {total_reward} - Steps')
-            step_bar.update()
 
         step_bar.close()
 

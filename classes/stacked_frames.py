@@ -6,13 +6,11 @@ import numpy as np
 
 class StackedFrames():
     def __init__(self, stack_size: int) -> None:
-        self.frames: deque = deque(maxlen=stack_size)
-        self.previous_frame: np.ndarray = np.zeros((210, 160, 3))
+        self._frames: deque = deque(maxlen=stack_size)
 
-    def _preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
+    def _preprocess_frame(self, frame: np.ndarray, previous_frame: np.ndarray) -> np.ndarray:
         # Take maximum of current and previous frame rgb values
-        max_frame = np.maximum(frame, self.previous_frame)
-        self.previous_frame = frame
+        max_frame = np.maximum(frame, previous_frame)
 
         # Extract luminance
         luminance_frame = np.dot(max_frame, [0.299, 0.587, 0.114])
@@ -22,16 +20,15 @@ class StackedFrames():
 
         return resized_frame
 
-    def append(self, frame: np.ndarray) -> None:
-        self.frames.append(self._preprocess_frame(frame))
+    def append(self, frame: np.ndarray, previous_frame: np.ndarray) -> None:
+        self._frames.append(self._preprocess_frame(frame, previous_frame))
     
     def get_frames(self) -> np.ndarray:
         # Return a numpy array of shape (84, 84, 4)
-        return np.stack(self.frames, axis=-1)
+        return np.stack(self._frames, axis=-1)
     
     def reset(self, frame: np.ndarray) -> None:
-        self.previous_frame = np.zeros(frame.shape)
-        initial_frame = self._preprocess_frame(frame)
-        for _ in range(self.frames.maxlen):
-            self.frames.append(initial_frame)
-        self.previous_frame = frame
+        previous_frame = np.zeros(frame.shape)
+        initial_frame = self._preprocess_frame(frame, previous_frame)
+        for _ in range(self._frames.maxlen):
+            self._frames.append(initial_frame)
