@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Dense, Flatten, Conv2D
 
 
 class DeepQNetwork(Model):
-    def __init__(self, num_actions, activation='relu'):
+    def __init__(self, num_actions, activation='relu') -> None:
         super(DeepQNetwork, self).__init__()
         self.conv1 = Conv2D(32, (8, 8), strides=(4, 4), activation=activation, input_shape=(84, 84, 4), padding='same')
         self.conv2 = Conv2D(64, (4, 4), strides=(2, 2), activation=activation, input_shape=(84, 84, 4), padding='same')

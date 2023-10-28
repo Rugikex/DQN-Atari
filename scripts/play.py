@@ -7,6 +7,7 @@ from tensorflow.keras.models import load_model
 
 sys.path.append(os.path.join(os.getcwd()))
 
+from classes.dqn import DeepQNetwork
 from classes.stacked_frames import StackedFrames
 from global_functions import get_model_path
 
@@ -25,7 +26,7 @@ env = gym.make(
 
 
 model_path, _ = get_model_path(game_name, sys.argv[4])
-agent = load_model(os.path.join('models', game_name, model_path))
+agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
 
 stacked_frames = StackedFrames(4)
 

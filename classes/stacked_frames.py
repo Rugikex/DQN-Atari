@@ -5,7 +5,7 @@ import numpy as np
 
 
 class StackedFrames():
-    def __init__(self, stack_size: int):
+    def __init__(self, stack_size: int) -> None:
         self.frames: deque = deque(maxlen=stack_size)
         self.previous_frame: np.ndarray = np.zeros((210, 160, 3))
 
@@ -30,7 +30,8 @@ class StackedFrames():
         return np.stack(self.frames, axis=-1)
     
     def reset(self, frame: np.ndarray) -> None:
-        self.previous_frame = np.zeros((210, 160, 3))
+        self.previous_frame = np.zeros(frame.shape)
         initial_frame = self._preprocess_frame(frame)
         for _ in range(self.frames.maxlen):
             self.frames.append(initial_frame)
+        self.previous_frame = frame

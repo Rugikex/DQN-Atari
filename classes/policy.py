@@ -1,5 +1,5 @@
 class EpsilonGreedyPolicy():
-    def __init__(self, epsilon: float, epsilon_decay: float=0.96, epsilon_end: float=0.1, epoque_already_played: int=0):
+    def __init__(self, epsilon: float, epsilon_decay: float=0.96, epsilon_end: float=0.1, epoque_already_played: int=0) -> None:
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_end = epsilon_end

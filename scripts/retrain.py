@@ -1,7 +1,6 @@
 from collections import deque
 import os
 import pickle
-import random
 import re
 import sys
 
@@ -13,9 +12,10 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.getcwd()))
 
+from classes.dqn import DeepQNetwork
 from classes.stacked_frames import StackedFrames
 from classes.policy import EpsilonGreedyPolicy
-from global_functions import get_model_path
+from global_functions import get_model_path, train_model
 import parameters
 
 
@@ -34,118 +34,43 @@ env = gym.make(
 
 model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
 
-n_actions = env.action_space.n
-
-agent = load_model(os.path.join('models', game_name, model_path))
-target_agent = load_model(os.path.join('models', game_name, model_path))
-
-stacked_frames = StackedFrames(4)
+agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
+target_agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
 
 replay_memory: deque
 with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:
     replay_memory = pickle.load(f)
-M = parameters.M * int(sys.argv[4])
-T = parameters.T
-epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_path).group(1))
-# Restoring C to the value it had when the model was saved
-C = (1 + epoque_already_played * parameters.T) % parameters.C_max
-C_max = parameters.C_max
 
-minibatch_size = 32
-gamma = 0.99
-# Restoring epsilon to the value it had when the model was saved
+M = parameters.M * int(sys.argv[4])
+epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_path).group(1))
+
+# Restoring C and epsilon to the value it had when the model was saved
+C = (1 + epoque_already_played * parameters.T) % parameters.C_max
 epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
+
 optimizer = tf.keras.optimizers.RMSprop(
     learning_rate=0.0025,
     momentum=0.95,
 )
 
-max_reward = -np.inf
-
+print("=======")
 print(f'Retraining on {game_name} for episode {M} with {epoque_already_played} already played')
 
-for episode in tqdm(range(1, M + 1), desc='Episodes'):
-    state, info = env.reset()
-    stacked_frames.reset(state)
-    memory_state = stacked_frames.get_frames()
-    lives = info['lives']
-
-    total_reward: np.float64 = 0.0
-
-    step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} - Steps', leave=False)
-    for t in step_bar:
-        # Choose an action using epsilon-greedy policy
-        action: np.int64
-        if random.uniform(0, 1) < epsilon.get_epsilon():
-            # Choose a random action
-            action = env.action_space.sample()
-        else:
-            # Choose the action with the highest Q-value
-            q_values = agent(stacked_frames.get_frames())
-            action = np.argmax(q_values)
-
-        next_state, reward, done, _, info = env.step(action)
-        stacked_frames.append(next_state)
-        if info['lives'] != lives:
-            lives = info['lives']
-            reward = -1
-        real_reward = np.sign(reward)
-
-        total_reward += real_reward
-
-        # Store the transition in the replay memory
-        replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
-        memory_state = stacked_frames.get_frames()
-
-        if len(replay_memory) < minibatch_size:
-            continue
-
-        # Sample a minibatch from the replay memory
-        minibatch = random.sample(replay_memory, minibatch_size)
-
-        # Perform Q-network update
-        for state_batch, action_batch, reward_batch, next_state_batch, done_batch in minibatch:
-            with tf.GradientTape() as tape:
-                target = reward_batch + gamma * tf.reduce_max(target_agent(next_state_batch), axis=0) * (1 - done_batch)
-                q_values = agent(state_batch)
-                # TODO: L1 then L2 loss (prof's tip)
-                loss = tf.reduce_mean(tf.square(target - q_values[action_batch]))
-            gradients = tape.gradient(loss, agent.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, agent.trainable_variables))
-
-        # Update the target network every C steps
-        if C == C_max:
-            target_agent.set_weights(agent.get_weights())
-            C = 0
-
-        if done:
-            state, info = env.reset()
-            stacked_frames.reset(state)
-            memory_state = stacked_frames.get_frames()
-            lives = info['lives']
-        else:
-            state = next_state
-
-        C = min(C_max, C + 1)
-
-        step_bar.set_description(f'Total reward: {total_reward} - Steps')
-        step_bar.update()
-
-    step_bar.close()
-    
-    epsilon.update_epsilon()
-
-    if total_reward > max_reward:
-        max_reward = total_reward
-
-env.close()
-
-print(f'Max reward in single episode: {max_reward}')
+trained_model = train_model(
+    agent,
+    target_agent,
+    env,
+    replay_memory,
+    epsilon,
+    optimizer,
+    M,
+    C
+)
 
 # Save learned model
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-agent.save(os.path.join('models', game_name, f'episode_{M + epoque_already_played}.keras'))
+trained_model.save(os.path.join('models', game_name, f'episode_{M + epoque_already_played}.keras'))
 with open(os.path.join('models', game_name, f'replay_memory_{M + epoque_already_played}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)
