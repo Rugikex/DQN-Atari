@@ -156,8 +156,6 @@ def train_model(
 
         step_bar.close()
 
-        epsilon.update_epsilon()
-
         if total_reward > max_reward:
             max_reward = total_reward
 

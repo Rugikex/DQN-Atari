@@ -43,7 +43,7 @@ epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_
 
 # Restoring C and epsilon to the value it had when the model was saved
 C = (1 + epoque_already_played * parameters.T) % parameters.C_max
-epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
+epsilon = EpsilonGreedyPolicy(1.0, steps=epoque_already_played * parameters.T)
 
 optimizer = tf.keras.optimizers.RMSprop(
     learning_rate=0.0025,
