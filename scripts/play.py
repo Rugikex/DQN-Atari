@@ -3,6 +3,7 @@ import sys
 
 import gymnasium as gym
 import numpy as np
+from tensorflow.keras.models import load_model
 
 sys.path.append(os.path.join(os.getcwd()))
 
@@ -25,10 +26,7 @@ env = gym.make(
 
 
 model_path, _ = get_model_path(game_name, sys.argv[4])
-
-
-agent = DeepQLearning(env.action_space.n)
-agent.load_weights(os.path.join('models', game_name, model_path))
+agent = load_model(os.path.join('models', game_name, model_path))
 
 stacked_frames = StackedFrames(4)
 

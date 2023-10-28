@@ -8,6 +8,7 @@ import sys
 import gymnasium as gym
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.models import load_model
 from tqdm import tqdm
 
 sys.path.append(os.path.join(os.getcwd()))
@@ -36,10 +37,8 @@ model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
 
 n_actions = env.action_space.n
 
-agent = DeepQLearning(n_actions)
-agent.load_weights(os.path.join('models', game_name, model_path))
-target_agent = DeepQLearning(n_actions)
-target_agent.set_weights(agent.get_weights())
+agent = load_model(os.path.join('models', game_name, model_path))
+target_agent = load_model(os.path.join('models', game_name, model_path))
 
 stacked_frames = StackedFrames(4)
 
@@ -57,7 +56,7 @@ minibatch_size = 32
 gamma = 0.99
 # Restoring epsilon to the value it had when the model was saved
 epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
-optimizer = tf.keras.optimizers.experimental.RMSprop(
+optimizer = tf.keras.optimizers.RMSprop(
     learning_rate=0.0025,
     momentum=0.95,
 )
@@ -148,6 +147,6 @@ print(f'Max reward in single episode: {max_reward}')
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-agent.save_weights(os.path.join('models', game_name, f'episode_{M + epoque_already_played}'))
+agent.save(os.path.join('models', game_name, f'episode_{M + epoque_already_played}.keras'))
 with open(os.path.join('models', game_name, f'replay_memory_{M + epoque_already_played}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)

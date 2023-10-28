@@ -136,6 +136,7 @@ print(f'Max reward in single episode: {max_reward}')
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
+# agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
+agent.save(os.path.join('models', game_name, f'episode_{M}.keras'))
 with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)

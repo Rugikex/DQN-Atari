@@ -22,3 +22,11 @@ class DeepQLearning(Model):
         x = self.flatten(x)
         x = self.fc1(x)
         return self.fc2(x)[0] # Remove the extra dimension
+
+    def get_config(self):
+        config = {
+            'num_actions': self.fc2.units,
+            'activation': self.conv1.activation.__name__
+        }
+        base_config = super(DeepQLearning, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))

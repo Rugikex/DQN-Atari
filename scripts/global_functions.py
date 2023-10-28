@@ -2,7 +2,7 @@ import re
 import os
 
 
-pattern = r"episode_(\d+)\.index"
+pattern = r"episode_(\d+).keras"
 
 def get_model_path(game_name: str, episode: str) -> tuple[str, str]:
     model_path = None
@@ -13,8 +13,8 @@ def get_model_path(game_name: str, episode: str) -> tuple[str, str]:
         episode = None
 
     if episode is not None:
-        model_path = f'episode_{episode}'
-        if not os.path.exists(os.path.join('models', game_name, f'{model_path}.index')):
+        model_path = f'episode_{episode}.keras'
+        if not os.path.exists(os.path.join('models', game_name, f'{model_path}')):
             raise Exception('No model found')
         max_number = episode
         
