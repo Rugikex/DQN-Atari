@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.getcwd()))
 
-from classes.dql import DeepQLearning
+from classes.dqn import DeepQNetwork
 from classes.stacked_frames import StackedFrames
 from classes.policy import EpsilonGreedyPolicy
 import parameters
@@ -31,8 +31,8 @@ env = gym.make(
 
 n_actions = env.action_space.n
 
-agent = DeepQLearning(n_actions)
-target_agent = DeepQLearning(n_actions)
+agent = DeepQNetwork(n_actions)
+target_agent = DeepQNetwork(n_actions)
 target_agent.set_weights(agent.get_weights())
 
 stacked_frames = StackedFrames(4)

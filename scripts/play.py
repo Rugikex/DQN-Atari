@@ -7,7 +7,6 @@ from tensorflow.keras.models import load_model
 
 sys.path.append(os.path.join(os.getcwd()))
 
-from classes.dql import DeepQLearning
 from classes.stacked_frames import StackedFrames
 from global_functions import get_model_path
 

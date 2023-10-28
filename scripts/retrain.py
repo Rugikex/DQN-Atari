@@ -13,7 +13,6 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.getcwd()))
 
-from classes.dql import DeepQLearning
 from classes.stacked_frames import StackedFrames
 from classes.policy import EpsilonGreedyPolicy
 from global_functions import get_model_path

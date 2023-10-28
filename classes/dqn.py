@@ -3,9 +3,9 @@ from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 
 
-class DeepQLearning(Model):
+class DeepQNetwork(Model):
     def __init__(self, num_actions, activation='relu'):
-        super(DeepQLearning, self).__init__()
+        super(DeepQNetwork, self).__init__()
         self.conv1 = Conv2D(32, (8, 8), strides=(4, 4), activation=activation, input_shape=(84, 84, 4), padding='same')
         self.conv2 = Conv2D(64, (4, 4), strides=(2, 2), activation=activation, input_shape=(84, 84, 4), padding='same')
         self.conv3 = Conv2D(64, (3, 3), strides=(1, 1), activation=activation, input_shape=(84, 84, 4), padding='same')
@@ -28,5 +28,5 @@ class DeepQLearning(Model):
             'num_actions': self.fc2.units,
             'activation': self.conv1.activation.__name__
         }
-        base_config = super(DeepQLearning, self).get_config()
+        base_config = super(DeepQNetwork, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
