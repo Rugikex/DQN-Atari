@@ -11,7 +11,6 @@ from classes.stacked_frames import StackedFrames
 from global_functions import get_model_path
 
 
-print(sys.argv)
 game_name = sys.argv[1]
 
 env = gym.make(
@@ -40,7 +39,10 @@ stacked_frames.reset(state)
 total_reward = 0
 lives = info['lives']
 
-for t in range(1, T + 1):
+print(f"Playing {game_name} with model {model_path}")
+
+t = 0
+while True:
     q_values = agent(stacked_frames.get_frames())
     action = np.argmax(q_values)
 
@@ -57,6 +59,7 @@ for t in range(1, T + 1):
         break
 
     state = next_state
+    t += 1
 
 
 env.close()

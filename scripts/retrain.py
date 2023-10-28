@@ -49,11 +49,13 @@ with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:
 M = parameters.M * int(sys.argv[4])
 T = parameters.T
 epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_path).group(1))
+# Restoring C to the value it had when the model was saved
 C = (1 + epoque_already_played * parameters.T) % parameters.C_max
 C_max = parameters.C_max
 
 minibatch_size = 32
 gamma = 0.99
+# Restoring epsilon to the value it had when the model was saved
 epsilon = EpsilonGreedyPolicy(1.0, epoque_already_played=epoque_already_played)
 optimizer = tf.keras.optimizers.experimental.RMSprop(
     learning_rate=0.0025,
@@ -62,6 +64,7 @@ optimizer = tf.keras.optimizers.experimental.RMSprop(
 
 max_reward = -np.inf
 
+print(f'Retraining on {game_name} for episode {M} with {epoque_already_played} already played')
 
 for episode in tqdm(range(1, M + 1), desc='Episodes'):
     state, info = env.reset()
@@ -145,6 +148,6 @@ print(f'Max reward in single episode: {max_reward}')
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
-with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
+agent.save_weights(os.path.join('models', game_name, f'episode_{M + epoque_already_played}'))
+with open(os.path.join('models', game_name, f'replay_memory_{M + epoque_already_played}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)
