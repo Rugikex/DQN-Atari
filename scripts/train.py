@@ -20,8 +20,10 @@ env = gym.make(
     game_name,
     mode=int(sys.argv[2]),
     difficulty=int(sys.argv[3]),
+    frameskip=1,
+    repeat_action_probability=0.0,
     obs_type='rgb',
-    full_action_space=True,
+    full_action_space=False,
     render_mode='rgb_array'
 )
 
@@ -45,8 +47,9 @@ optimizer = tf.keras.optimizers.experimental.RMSprop(
 
 print("=======")
 print(f'Training on {game_name} for episode {M}')
+print("=======")
 
-trained_agent = train_model(
+train_model(
     agent,
     target_agent,
     env,
@@ -62,6 +65,6 @@ if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
 # agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
-trained_agent.save(os.path.join('models', game_name, f'episode_{M}.keras'))
+agent.save(os.path.join('models', game_name, f'episode_{M}.keras'))
 with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)

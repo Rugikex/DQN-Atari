@@ -70,49 +70,58 @@ def train_model(
         C: int,
 ) -> DeepQNetwork:
     stacked_frames = StackedFrames(4)
-    max_reward = -np.inf
+    best_reward = -np.inf
+    best_episode = 0
     C_max = parameters.C_max
     T = parameters.T
     skip_frames = 4
 
-    for _ in tqdm(range(1, M + 1), desc='Episodes'):
+    for episode in tqdm(range(1, M + 1), desc='Episodes'):
         state, info = env.reset()
         stacked_frames.reset(state)
         memory_state = stacked_frames.get_frames()
         lives = info['lives']
+        previous_state = state
 
         total_reward: np.float64 = 0.0
 
-        step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} - Steps', leave=False)
-        for t in step_bar:
+        step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} -- First Move  -- Steps', leave=False)
+        for _ in step_bar:
             # Choose an action using epsilon-greedy policy
             action: np.int64
+            move_type: str
             if random.uniform(0, 1) < epsilon.get_epsilon():
                 # Choose a random action
                 action = env.action_space.sample()
+                move_type = 'Random Move'
             else:
                 # Choose the action with the highest Q-value
                 q_values = agent(stacked_frames.get_frames())
                 action = np.argmax(q_values)
+                move_type = 'Max Move   '
 
 
-            next_state: np.ndarray
-            previous_state: np.ndarray
-            reward: float
+            next_state = previous_state
+            sum_reward = 0.0
             done: bool
             info: dict
 
             for skip in range(skip_frames):
-                next_state, reward, done, _, info = env.step(action)
-                # TODO: what happens if we skip a frame and the game ends?
-                if skip == skip_frames - 2:
+                if skip <= skip_frames - 2:
                     previous_state = next_state
 
+                next_state, reward, done, _, info = env.step(action)
+                if info['lives'] != lives:
+                    lives = info['lives']
+                    reward = -1
+
+                sum_reward += np.sign(reward)
+
+                if done:
+                    break
+
             stacked_frames.append(next_state, previous_state)
-            if info['lives'] != lives:
-                lives = info['lives']
-                reward = -1
-            real_reward = np.sign(reward)
+            real_reward = np.sign(sum_reward)
 
             total_reward += real_reward
 
@@ -130,10 +139,12 @@ def train_model(
             for state_batch, action_batch, reward_batch, next_state_batch, done_batch in minibatch:
                 with tf.GradientTape() as tape:
                     target = reward_batch + gamma * tf.reduce_max(target_agent(next_state_batch), axis=0) * (1 - done_batch)
-                    target_clip = tf.clip_by_value(target, -1, 1)
                     q_values = agent(state_batch)
-                    # TODO: L1 then L2 loss (prof's tip)
-                    loss = tf.reduce_mean(tf.square(target_clip - q_values[action_batch]))
+                    error = target - q_values[action_batch]
+                    # TODO: Recheck this
+                    # clipped_error = tf.clip_by_value(target - q_values[action_batch], -1, 1)
+                    # loss = tf.reduce_mean(tf.abs(clipped_error))
+                    loss = tf.reduce_mean(tf.square(error))
                 gradients = tape.gradient(loss, agent.trainable_variables)
                 optimizer.apply_gradients(zip(gradients, agent.trainable_variables))
 
@@ -152,14 +163,15 @@ def train_model(
 
             C = min(C_max, C + 1)
 
-            step_bar.set_description(f'Total reward: {total_reward} - Steps')
+            step_bar.set_description(f'Total reward: {total_reward} -- {move_type} -- Steps')
 
         step_bar.close()
 
-        if total_reward > max_reward:
-            max_reward = total_reward
+        if total_reward > best_reward:
+            best_reward = total_reward
+            best_episode = episode
 
     env.close()
-    print(f'Max reward in single episode: {max_reward}')
+    print(f'Best reward: {best_reward} in episode {best_episode}')
 
     return agent

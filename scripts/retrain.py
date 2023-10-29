@@ -22,8 +22,10 @@ env = gym.make(
     game_name,
     mode=int(sys.argv[2]),
     difficulty=int(sys.argv[3]),
+    frameskip=1,
+    repeat_action_probability=0.0,
     obs_type='rgb',
-    full_action_space=True,
+    full_action_space=False,
     render_mode='rgb_array'
 )
 
@@ -44,6 +46,8 @@ epoque_already_played = int(re.match(r"replay_memory_(\d+)\.pkl", replay_memory_
 C = (1 + epoque_already_played * parameters.T) % parameters.C_max
 epsilon = EpsilonGreedyPolicy(1.0, steps=epoque_already_played * parameters.T)
 
+minibatch_size = 32
+gamma = 0.99
 optimizer = tf.keras.optimizers.RMSprop(
     learning_rate=0.0025,
     momentum=0.95,
@@ -51,8 +55,9 @@ optimizer = tf.keras.optimizers.RMSprop(
 
 print("=======")
 print(f'Retraining on {game_name} for episode {M} with {epoque_already_played} already played')
+print("=======")
 
-trained_model = train_model(
+train_model(
     agent,
     target_agent,
     env,
@@ -67,6 +72,6 @@ trained_model = train_model(
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-trained_model.save(os.path.join('models', game_name, f'episode_{M + epoque_already_played}.keras'))
+agent.save(os.path.join('models', game_name, f'episode_{M + epoque_already_played}.keras'))
 with open(os.path.join('models', game_name, f'replay_memory_{M + epoque_already_played}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)

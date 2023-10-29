@@ -18,8 +18,10 @@ env = gym.make(
     game_name,
     mode=int(sys.argv[2]),
     difficulty=int(sys.argv[3]),
+    frameskip=1,
+    repeat_action_probability=0.0,
     obs_type='rgb',
-    full_action_space=True,
+    full_action_space=False,
     render_mode='human'
 )
 
@@ -35,20 +37,39 @@ state, info = env.reset()
 stacked_frames.reset(state)
 total_reward = 0
 lives = info['lives']
+previous_state = state
 
+print("=======")
 print(f"Playing {game_name} with model {model_path}")
+print("=======")
 
 t = 0
+skip_frames = 4
 while True:
     q_values = agent(stacked_frames.get_frames())
     action = np.argmax(q_values)
 
-    next_state, reward, done, _, info = env.step(action)
-    stacked_frames.append(next_state)
-    if info['lives'] != lives:
-        lives = info['lives']
-        reward = -1
-    real_reward = np.sign(reward)
+    next_state = previous_state
+    sum_reward = 0.0
+    done: bool
+    info: dict
+
+    for skip in range(skip_frames):
+        if skip <= skip_frames - 2:
+            previous_state = next_state
+
+        next_state, reward, done, _, info = env.step(action)
+        if info['lives'] != lives:
+            lives = info['lives']
+            reward = -1
+
+        sum_reward += np.sign(reward)
+
+        if done:
+            break
+
+    stacked_frames.append(next_state, previous_state)
+    real_reward = np.sign(sum_reward)
 
     total_reward += real_reward
 
