@@ -20,7 +20,7 @@ import parameters
 gamma = 0.99
 minibatch_size = 32
 
-pattern = r"episode_(\d+).keras"
+pattern = r"episode_(\d+)\.h5"
 
 def get_model_path(game_name: str, episode: str) -> tuple[str, str]:
     model_path = None
@@ -31,7 +31,7 @@ def get_model_path(game_name: str, episode: str) -> tuple[str, str]:
         episode = None
 
     if episode is not None:
-        model_path = f'episode_{episode}.keras'
+        model_path = f'episode_{episode}.h5'
         if not os.path.exists(os.path.join('models', game_name, f'{model_path}')):
             raise Exception('No model found')
         max_number = episode
@@ -113,7 +113,7 @@ def train_model(
                 next_state, reward, done, _, info = env.step(action)
                 if info['lives'] != lives:
                     lives = info['lives']
-                    reward = -1
+                    reward = -1.0
 
                 sum_reward += np.sign(reward)
 

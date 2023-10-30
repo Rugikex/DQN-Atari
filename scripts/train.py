@@ -60,11 +60,13 @@ train_model(
     C
 )
 
+
 # Save trained model and replay memory
 if not os.path.exists(os.path.join('models', game_name)):
     os.makedirs(os.path.join('models', game_name))
 
-# agent.save_weights(os.path.join('models', game_name, f'episode_{M}'))
-agent.save(os.path.join('models', game_name, f'episode_{M}.keras'))
+# agent.save(os.path.join('models', game_name, f'episode_{M}.keras'))
+agent.save_weights(os.path.join('models', game_name, f'episode_{M}.h5'))
+
 with open(os.path.join('models', game_name, f'replay_memory_{M}.pkl'), 'wb') as file:
     pickle.dump(replay_memory, file)

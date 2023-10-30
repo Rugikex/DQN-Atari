@@ -32,8 +32,12 @@ env = gym.make(
 
 model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
 
-agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
-target_agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
+agent = DeepQNetwork(env.action_space.n)
+agent.build((84, 84, 4))
+agent.load_weights(os.path.join('models', game_name, model_path))
+
+target_agent = DeepQNetwork(env.action_space.n)
+target_agent.load_weights(agent.get_weights())
 
 replay_memory: deque
 with open(os.path.join('models', game_name, replay_memory_path), 'rb') as f:

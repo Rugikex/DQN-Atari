@@ -27,7 +27,9 @@ env = gym.make(
 
 
 model_path, _ = get_model_path(game_name, sys.argv[4])
-agent: DeepQNetwork = load_model(os.path.join('models', game_name, model_path))
+agent = DeepQNetwork(env.action_space.n)
+agent.build((84, 84, 4))
+agent.load_weights(os.path.join('models', game_name, model_path))
 
 stacked_frames = StackedFrames(4)
 
@@ -45,6 +47,7 @@ print("=======")
 
 t = 0
 skip_frames = 4
+
 while True:
     q_values = agent(stacked_frames.get_frames())
     action = np.argmax(q_values)
@@ -61,7 +64,7 @@ while True:
         next_state, reward, done, _, info = env.step(action)
         if info['lives'] != lives:
             lives = info['lives']
-            reward = -1
+            reward = -1.0
 
         sum_reward += np.sign(reward)
 
