@@ -114,6 +114,7 @@ def train_model(
                 if info['lives'] != lives:
                     lives = info['lives']
                     reward = -1.0
+                    done = True
 
                 sum_reward += np.sign(reward)
 
@@ -154,12 +155,9 @@ def train_model(
                 C = 0
 
             if done:
-                state, info = env.reset()
-                stacked_frames.reset(state)
-                memory_state = stacked_frames.get_frames()
-                lives = info['lives']
-            else:
-                state = next_state
+                break
+
+            state = next_state
 
             C = min(C_max, C + 1)
 
