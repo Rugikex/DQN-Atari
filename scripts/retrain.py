@@ -15,7 +15,7 @@ from classes.policy import EpsilonGreedyPolicy
 from global_functions import get_model_path, train_model
 import parameters
 
-
+# TODO
 game_name = sys.argv[1]
 
 env = gym.make(
@@ -32,7 +32,7 @@ env = gym.make(
 
 model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
 
-agent = DeepQNetwork(env.action_space.n)
+agent = DeepQNetwork(env.action_space.n).to
 agent.build((84, 84, 4))
 agent.load_weights(os.path.join('models', game_name, model_path))
 

@@ -24,8 +24,8 @@ class StackedFrames():
         self._frames.append(self._preprocess_frame(frame, previous_frame))
     
     def get_frames(self) -> np.ndarray:
-        # Return a numpy array of shape (84, 84, 4)
-        return np.stack(self._frames, axis=-1)
+        # Return a numpy array of shape (4, 84, 84)
+        return np.array(self._frames)
     
     def reset(self, frame: np.ndarray) -> None:
         previous_frame = np.zeros(frame.shape)

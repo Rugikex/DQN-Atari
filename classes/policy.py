@@ -6,8 +6,8 @@ class EpsilonGreedyPolicy():
             epsilon_init: float,
             epsilon_end: float=0.1,
             steps: int=0,
-            steps_to_start_decay: int=parameters.T,
-            steps_to_epsilon_end: int=5000,
+            steps_to_start_decay: int=0,
+            steps_to_epsilon_end: int=parameters.N,
     ) -> None:
         self._epsilon = epsilon_init
         self._epsilon_end = epsilon_end
