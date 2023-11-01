@@ -28,6 +28,13 @@ env = gym.make(
     render_mode='human'
 )
 
+# Get fire action if exists to not get stuck in the game
+check_fire_action = [action for action, meaning in enumerate(env.unwrapped.get_action_meanings()) if meaning == 'FIRE']
+if len(check_fire_action) > 0:
+    fire_action = check_fire_action[0]
+else:
+    fire_action = None
+
 
 model_path, _ = get_model_path(game_name, sys.argv[4])
 # Load the model
@@ -52,8 +59,33 @@ print("=======")
 
 t = 0
 skip_frames = 4
+has_fire_action = False
+
+for _ in range(random.randint(1, 30)):
+    action = env.action_space.sample()
+    if fire_action is not None and action == fire_action:
+        has_fire_action = True
+    next_state, reward, done, _, info = env.step(action)
+    if info['lives'] != lives:
+        lives = info['lives']
+        done = True
+    stacked_frames.append(next_state, previous_state)
+    previous_state = next_state
+    if done:
+        state, info = env.reset()
+        stacked_frames.reset(state)
+        lives = info['lives']
+        previous_state = state
+
+
+if fire_action is not None:
+    action = fire_action
+
 
 while True:
+    # if random.random() < 0.05:
+    #     action = env.action_space.sample()
+    # else:
     observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(device)
     q_values = agent(observation)
     action = torch.argmax(q_values).item()
@@ -70,7 +102,6 @@ while True:
         next_state, reward, done, _, info = env.step(action)
         if info['lives'] != lives:
             lives = info['lives']
-            reward = -1.0
 
         sum_reward += np.sign(reward)
 

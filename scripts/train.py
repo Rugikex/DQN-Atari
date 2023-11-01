@@ -42,12 +42,17 @@ C = 1
 minibatch_size = 32
 gamma = 0.99
 epsilon = EpsilonGreedyPolicy(1.0)
-optimizer = optim.RMSprop(
+# optimizer = optim.RMSprop(
+#     agent.parameters(),
+#     lr=0.000_25,
+#     momentum=0.95,
+# )
+optimizer = optim.Adam(
     agent.parameters(),
     lr=0.000_25,
-    momentum=0.95,
+    eps=1e-6
 )
-    
+
 print("=======")
 print(f'Training on {game_name} for episode {M}')
 print("=======")

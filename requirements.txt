@@ -2,5 +2,6 @@ gymnasium[accept-rom-license, atari]
 matplotlib
 numpy
 opencv-python
+tensorboard
 torch
 tqdm

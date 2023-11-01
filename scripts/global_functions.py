@@ -122,7 +122,6 @@ def train_model(
     best_reward = -np.inf
     best_episode = 0
     C_max = parameters.C_max
-    T = parameters.T
     skip_frames = 4
 
     state, info = env.reset()
@@ -131,72 +130,54 @@ def train_model(
     lives = info['lives']
     previous_state = state
 
-    # Start with 50_000 random moves
-    for _ in tqdm(range(50_000), leave=False, desc='Random Moves to fill the replay memory'):
-        action = env.action_space.sample()
+    episode = 0
+    # while step < parameters.frame_per_trainings:
+    for step in tqdm(range(1, parameters.frame_per_trainings + 1), desc='Steps'):
 
-        next_state = previous_state
-        sum_reward = 0.0
-        done: bool
-
-        for skip in range(skip_frames):
-            if skip <= skip_frames - 2:
-                previous_state = next_state
-
+        # Randomly play between 1 and 30 frames
+        for _ in range(random.randint(1, 30)):
+            action = env.action_space.sample()
             next_state, reward, done, _, info = env.step(action)
             if info['lives'] != lives:
                 lives = info['lives']
-                reward = -1.0
                 done = True
-
-            sum_reward += np.sign(reward)
-
+            stacked_frames.append(next_state, previous_state)
+            previous_state = next_state
             if done:
-                break
+                state, info = env.reset()
+                stacked_frames.reset(state)
+                lives = info['lives']
+                previous_state = state
 
-        stacked_frames.append(next_state, previous_state)
-        real_reward = np.sign(sum_reward)
+        episode_reward: np.float64 = 0.0
+        episode_step = 0
+        done = False
 
-        # Store the transition in the replay memory
-        replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
-        memory_state = stacked_frames.get_frames()
+        while not done:
 
-        if done:
-            next_state, info = env.reset()
-            stacked_frames.reset(state)
-            lives = info['lives']
+        # for episode in tqdm(range(1, M + 1), desc='Episodes'):
 
-        state = next_state
+            
+            # step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} -- First Move  -- Steps', leave=False)
+            # for _ in step_bar:
 
-    for episode in tqdm(range(1, M + 1), desc='Episodes'):
-        state, info = env.reset()
-        stacked_frames.reset(state)
-        memory_state = stacked_frames.get_frames()
-        lives = info['lives']
-        previous_state = state
-
-        total_reward: np.float64 = 0.0
-        
-        step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} -- First Move  -- Steps', leave=False)
-        for _ in step_bar:
             # Choose an action using epsilon-greedy policy
             action: np.int64
-            move_type: str
+            # move_type: str
             if random.uniform(0, 1) < epsilon.get_epsilon():
                 # Choose a random action
                 action = env.action_space.sample()
-                move_type = 'Random Move'
+                # move_type = 'Random'
             else:
                 # Choose the action with the highest Q-value
                 observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(parameters.device)
                 q_values = agent(observation)
                 action = torch.argmax(q_values).item()
-                move_type = 'Max Move   '
+                # move_type = 'Greedy'
 
 
             next_state = previous_state
             sum_reward = 0.0
-            done: bool
 
             for skip in range(skip_frames):
                 if skip <= skip_frames - 2:
@@ -205,48 +186,46 @@ def train_model(
                 next_state, reward, done, _, info = env.step(action)
                 if info['lives'] != lives:
                     lives = info['lives']
-                    reward = -1.0
                     done = True
 
-                sum_reward += np.sign(reward)
+                sum_reward += reward
 
                 if done:
                     break
 
             stacked_frames.append(next_state, previous_state)
             real_reward = np.sign(sum_reward)
-            total_reward += real_reward
 
             # Store the transition in the replay memory
             replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
             memory_state = stacked_frames.get_frames()
 
-            if len(replay_memory) >= parameters.end_full_random:
+            if step % 4 == 0 and len(replay_memory) >= parameters.N:
                 # Sample a minibatch from the replay memory
                 minibatch = random.sample(replay_memory, minibatch_size)
                 loss = update_q_network(agent, target_agent, minibatch, optimizer, gamma)
-                writter.add_scalar('Loss', loss, episode)
+                # writter.add_scalar('Loss', loss, episode)
 
             # Update the target network every C steps
-            if C == C_max:
+            if step % C_max == 0 and len(replay_memory) >= parameters.N:
                 target_agent.load_state_dict(agent.state_dict())
-                C = 0
+
+            episode_reward += real_reward
+            episode_step += 1
+            step += 1
 
             if done:
                 break
 
             state = next_state
-            C = min(C_max, C + 1)
 
-            step_bar.set_description(f'Total reward: {total_reward} -- {move_type} -- Steps')
-            writter.add_scalar('Total reward', total_reward, episode)
+            # step_bar.set_description(f'Total reward: {total_reward} -- {move_type} -- Steps')
+        writter.add_scalar('Episode reward', episode_reward, episode)
+        writter.add_scalar('Episode length', episode_step, episode)
+        episode += 1
 
-        step_bar.close()
+            # step_bar.close()
 
-        if total_reward > best_reward:
-            best_reward = total_reward
-            best_episode = episode
-        
 
     writter.flush()
     writter.close()
