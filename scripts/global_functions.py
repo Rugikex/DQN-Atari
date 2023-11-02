@@ -4,7 +4,6 @@ import re
 import os
 import sys
 
-
 import gymnasium as gym
 import numpy as np
 import torch
@@ -15,6 +14,7 @@ from tqdm import tqdm
 sys.path.append(os.path.join(os.getcwd()))
 
 from classes.dqn import DeepQNetwork
+from classes.env_wrapper import AtariWrapper
 from classes.policy import EpsilonGreedyPolicy
 from classes.stacked_frames import StackedFrames
 import parameters
@@ -117,84 +117,41 @@ def train_model(
         C: int,
 ) -> None:
     writter = SummaryWriter(log_dir=os.path.join('logs'))
+    env = AtariWrapper(env)
 
     stacked_frames = StackedFrames(4)
-    best_reward = -np.inf
-    best_episode = 0
     C_max = parameters.C_max
-    skip_frames = 4
 
-    state, info = env.reset()
+    state, _ = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
-    lives = info['lives']
-    previous_state = state
 
     episode = 0
-    # while step < parameters.frame_per_trainings:
     for step in tqdm(range(1, parameters.frame_per_trainings + 1), desc='Steps'):
-
-        # Randomly play between 1 and 30 frames
-        for _ in range(random.randint(1, 30)):
-            action = env.action_space.sample()
-            next_state, reward, done, _, info = env.step(action)
-            if info['lives'] != lives:
-                lives = info['lives']
-                done = True
-            stacked_frames.append(next_state, previous_state)
-            previous_state = next_state
-            if done:
-                state, info = env.reset()
-                stacked_frames.reset(state)
-                lives = info['lives']
-                previous_state = state
+        state, _ = env.reset()
+        stacked_frames.reset(state)
+        memory_state = stacked_frames.get_frames()
 
         episode_reward: np.float64 = 0.0
         episode_step = 0
         done = False
 
         while not done:
-
-        # for episode in tqdm(range(1, M + 1), desc='Episodes'):
-
-            
-            # step_bar = tqdm(range(1, T + 1), desc=f'Total reward: {total_reward} -- First Move  -- Steps', leave=False)
-            # for _ in step_bar:
-
-            # Choose an action using epsilon-greedy policy
             action: np.int64
-            # move_type: str
             if random.uniform(0, 1) < epsilon.get_epsilon():
                 # Choose a random action
                 action = env.action_space.sample()
-                # move_type = 'Random'
             else:
                 # Choose the action with the highest Q-value
                 observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(parameters.device)
                 q_values = agent(observation)
                 action = torch.argmax(q_values).item()
-                # move_type = 'Greedy'
 
+            state, reward, done, _, info = env.step(action)
+            previous_state = info['previous_state']
 
-            next_state = previous_state
-            sum_reward = 0.0
-
-            for skip in range(skip_frames):
-                if skip <= skip_frames - 2:
-                    previous_state = next_state
-
-                next_state, reward, done, _, info = env.step(action)
-                if info['lives'] != lives:
-                    lives = info['lives']
-                    done = True
-
-                sum_reward += reward
-
-                if done:
-                    break
-
-            stacked_frames.append(next_state, previous_state)
-            real_reward = np.sign(sum_reward)
+            stacked_frames.append(state, previous_state)
+            real_reward = np.sign(reward)
 
             # Store the transition in the replay memory
             replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
@@ -203,8 +160,7 @@ def train_model(
             if step % 4 == 0 and len(replay_memory) >= parameters.N:
                 # Sample a minibatch from the replay memory
                 minibatch = random.sample(replay_memory, minibatch_size)
-                loss = update_q_network(agent, target_agent, minibatch, optimizer, gamma)
-                # writter.add_scalar('Loss', loss, episode)
+                update_q_network(agent, target_agent, minibatch, optimizer, gamma)
 
             # Update the target network every C steps
             if step % C_max == 0 and len(replay_memory) >= parameters.N:
@@ -217,18 +173,11 @@ def train_model(
             if done:
                 break
 
-            state = next_state
-
-            # step_bar.set_description(f'Total reward: {total_reward} -- {move_type} -- Steps')
         writter.add_scalar('Episode reward', episode_reward, episode)
         writter.add_scalar('Episode length', episode_step, episode)
         episode += 1
 
-            # step_bar.close()
-
-
     writter.flush()
     writter.close()
 
-    # env.close()
-    print(f'Best reward: {best_reward} in episode {best_episode}')
+    env.close()
