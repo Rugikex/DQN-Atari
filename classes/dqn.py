@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class DeepQNetwork(nn.Module):
     def __init__(self, num_actions, input_shape=(4, 84, 84)):
         super().__init__()

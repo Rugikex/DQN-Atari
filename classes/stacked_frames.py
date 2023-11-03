@@ -18,7 +18,8 @@ class StackedFrames():
         # Rescale to 84x84
         resized_frame = cv2.resize(luminance_frame, (84, 84), interpolation=cv2.INTER_AREA)
 
-        return resized_frame
+        # Convert to uint8 to save memory
+        return resized_frame.astype(np.uint8)
 
     def append(self, frame: np.ndarray, previous_frame: np.ndarray) -> None:
         self._frames.append(self._preprocess_frame(frame, previous_frame))
@@ -28,7 +29,7 @@ class StackedFrames():
         return np.array(self._frames)
     
     def reset(self, frame: np.ndarray) -> None:
-        previous_frame = np.zeros(frame.shape)
+        previous_frame = np.zeros(frame.shape, dtype=frame.dtype)
         initial_frame = self._preprocess_frame(frame, previous_frame)
         for _ in range(self._frames.maxlen):
             self._frames.append(initial_frame)

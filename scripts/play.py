@@ -15,6 +15,7 @@ from global_functions import get_model_path
 
 import parameters
 
+
 device = parameters.device
 game_name = sys.argv[1]
 
@@ -31,10 +32,11 @@ env = gym.make(
 
 env = AtariWrapper(env, skip_frames=4, play=True)
 
-model_path, _ = get_model_path(game_name, sys.argv[4])
+model_path = get_model_path(game_name, sys.argv[4])
+states_dict = torch.load(os.path.join('models', game_name, model_path))
 # Load the model
 agent = DeepQNetwork(env.action_space.n).to(device)
-agent.load_state_dict(torch.load(os.path.join('models', game_name, model_path)))
+agent.load_state_dict(states_dict['state_dict'])
 agent.eval()
 
 
@@ -52,12 +54,14 @@ print("=======")
 
 t = 0
 while True:
-    if random.random() < 0.05:
-        action = env.action_space.sample()
-    else:
-        observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(device)
-        q_values = agent(observation)
-        action = torch.argmax(q_values).item()
+    # TODO: Decomment this to play randomly
+    # if random.random() < 0.05:
+    #     action = env.action_space.sample()
+    # else:
+    observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(device)
+    q_values = agent(observation)
+    action = torch.argmax(q_values).item()
+    print(q_values)
 
     state, reward, done, _, info = env.step(action)
     previous_state = info['previous_state']

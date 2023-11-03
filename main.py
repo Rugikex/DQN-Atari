@@ -12,7 +12,7 @@ def main():
     parser.add_argument('--difficulty', type=int, default=0, help="Difficulty level")
     parser.add_argument('--repeat', type=int, default=1, help="Number of times to repeat the training (episodes * repeat)")
 
-    parser.add_argument('--ep', type=int, help="Episode number to load for playing")
+    parser.add_argument('--name', type=str, default=None, help="Name of the model to retrain or play")
 
     args = parser.parse_args()
 
@@ -21,15 +21,15 @@ def main():
 
     if args.action == 'train':
         script_path = os.path.join('scripts', 'train.py')
-        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat}")
+        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat} {args.name}")
         
     elif args.action == 'retrain':
         script_path = os.path.join('scripts', 'retrain.py')
-        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat} {args.ep}")
+        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat} {args.name}")
 
     elif args.action == 'play':
         script_path = os.path.join('scripts', 'play.py')
-        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.ep}")
+        os.system(f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.name}")
 
 
 if __name__ == "__main__":

@@ -1,13 +1,14 @@
 import parameters
 
+
 class EpsilonGreedyPolicy():
     def __init__(
             self,
             epsilon_init: float,
             epsilon_end: float=0.1,
             steps: int=0,
-            steps_to_start_decay: int=parameters.N,
-            steps_to_epsilon_end: int=30_000,
+            steps_to_start_decay: int=parameters.start_update,
+            steps_to_epsilon_end: int=1_000_000,
     ) -> None:
         self._epsilon = epsilon_init
         self._epsilon_end = epsilon_end

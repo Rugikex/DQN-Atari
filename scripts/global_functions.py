@@ -1,8 +1,8 @@
 from collections import deque
-import random
-import re
 import os
+import random
 import sys
+import time
 
 import gymnasium as gym
 import numpy as np
@@ -27,45 +27,15 @@ device = parameters.device
 gamma = 0.99
 minibatch_size = 32
 
-pattern = r"episode_(\d+)\.h5"
+extension = '.pt'
 
 
-def get_model_path(game_name: str, episode: str) -> tuple[str, str]:
-    model_path = None
-    max_number: int
-    try:
-        episode = int(episode)
-    except ValueError:
-        episode = None
-
-    if episode is not None:
-        model_path = f'episode_{episode}.h5'
-        if not os.path.exists(os.path.join('models', game_name, f'{model_path}')):
-            raise Exception('No model found')
-        max_number = episode
-        
-    else:
-        max_number = 0
-        for filename in os.listdir(os.path.join('models', game_name)):
-            match = re.match(pattern, filename)
-            if match:
-                # Extract the number of episode from the filename
-                number = int(match.group(1))
-
-                # Check if this number is greater than the current max_number
-                if number > max_number:
-                    max_number = number
-                    model_path = filename
-
-    if not model_path:
+def get_model_path(game_name: str, model_name: str) -> str:
+    model_path = f'{model_name}{extension}'
+    if not os.path.exists(os.path.join('models', game_name, f'{model_path}')):
         raise Exception('No model found')
-    
-    # Check if the replay memory associated with the model exists
-    replay_memory_path = f'replay_memory_{max_number}.pkl'
-    # if not os.path.exists(os.path.join('models', game_name, replay_memory_path)):
-    #     raise Exception('No replay memory found')
 
-    return model_path, replay_memory_path
+    return model_path
 
 
 def update_q_network(agent: DeepQNetwork, target_agent: DeepQNetwork, minibatch: dict, optimizer: torch.optim, gamma: float) -> float:
@@ -73,32 +43,30 @@ def update_q_network(agent: DeepQNetwork, target_agent: DeepQNetwork, minibatch:
     states, actions, rewards, next_states, dones = zip(*minibatch)
 
     # Convert data to PyTorch tensors
-    states = torch.tensor(np.array(states, dtype=np.float32), dtype=torch.float32).to(parameters.device)
-    next_states = torch.tensor(np.array(next_states, dtype=np.float32), dtype=torch.float32).to(parameters.device)
+    states = torch.tensor(np.array(states), dtype=torch.float32).to(parameters.device)
     actions = torch.tensor(actions).to(parameters.device)
-    rewards = torch.tensor(rewards, dtype=torch.float32).to(parameters.device)
-    dones = torch.tensor(dones, dtype=torch.float32).to(parameters.device)
+    rewards = torch.tensor(rewards).to(parameters.device)
+    next_states = torch.tensor(np.array(next_states), dtype=torch.float32).to(parameters.device)
+    not_dones = torch.logical_not(torch.tensor(dones).to(parameters.device))
 
     # Compute Q-values for the current state
     q_values = agent(states)
     q_values = q_values.gather(1, actions.view(-1, 1))
 
+    print(q_values.shape)
+    print(actions.shape)
+    print(actions.view(-1, 1).shape)
+    print(actions.unsqueeze(1).shape)
+
     # Compute the target Q-values using the target network
-    with torch.no_grad():
-        next_q_values = target_agent(next_states)
-        max_next_q_values, _ = next_q_values.max(1)
-        target_q_values = rewards + (1 - dones) * gamma * max_next_q_values
+    next_q_values = target_agent(next_states)
+    max_next_q_values, _ = next_q_values.max(1)
+    target_q_values = rewards + not_dones * gamma * max_next_q_values
 
-    # # Clip the error
-    # error = q_values - target_q_values.view(-1, 1)
-    # clipped_error = torch.clamp(error, -1, 1)
+    # Compute loss
+    loss = F.huber_loss(q_values, target_q_values.unsqueeze(1))
 
-    # loss = torch.mean(torch.abs(clipped_error))
-
-    # Compute the loss (e.g., mean squared error)
-    loss = F.mse_loss(q_values, target_q_values.view(-1, 1))
-
-    # Perform backpropagation and update the Q-network
+    # Optimize the model
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
@@ -111,23 +79,31 @@ def train_model(
         target_agent: DeepQNetwork,
         env: gym.Env,
         replay_memory: deque,
-        epsilon: EpsilonGreedyPolicy,
         optimizer: torch.optim,
-        M: int,
-        C: int,
-) -> None:
-    writter = SummaryWriter(log_dir=os.path.join('logs'))
+        episodes_already_done: int=0,
+        steps_already_done: int=0
+) -> int:
+    # TODO: better logging -> track with retrain script
+    writter = SummaryWriter(log_dir=os.path.join('logs', time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())))
     env = AtariWrapper(env)
 
+    epsilon = EpsilonGreedyPolicy(1.0, steps=steps_already_done)
     stacked_frames = StackedFrames(4)
-    C_max = parameters.C_max
+    update_target_network = parameters.update_target_network
 
     state, _ = env.reset()
     stacked_frames.reset(state)
     memory_state = stacked_frames.get_frames()
 
-    episode = 0
-    for step in tqdm(range(1, parameters.frame_per_trainings + 1), desc='Steps'):
+    episode = episodes_already_done
+
+    max_seconds = parameters.seconds_per_training
+    progress_bar = tqdm(total=max_seconds, desc="Training", unit="s")
+
+    step = 0
+    start_time = time.time()
+    time_spent = 0
+    while time_spent < max_seconds:
         state, _ = env.reset()
         stacked_frames.reset(state)
         memory_state = stacked_frames.get_frames()
@@ -135,35 +111,40 @@ def train_model(
         episode_reward: np.float64 = 0.0
         episode_step = 0
         done = False
+        epsilon_value: float
+        reward_last_100_episodes = deque(maxlen=100)
 
-        while not done:
+        while episode_step < parameters.steps_per_episode:
             action: np.int64
-            if random.uniform(0, 1) < epsilon.get_epsilon():
+            epsilon_value = epsilon.get_epsilon()
+            if random.uniform(0, 1) < epsilon_value:
                 # Choose a random action
                 action = env.action_space.sample()
             else:
                 # Choose the action with the highest Q-value
-                observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(parameters.device)
-                q_values = agent(observation)
+                observation = torch.tensor(stacked_frames.get_frames(), dtype=torch.float32).unsqueeze(0).to(device)
+                with torch.no_grad():
+                    q_values = agent(observation)
                 action = torch.argmax(q_values).item()
 
             state, reward, done, _, info = env.step(action)
             previous_state = info['previous_state']
 
             stacked_frames.append(state, previous_state)
-            real_reward = np.sign(reward)
+            real_reward = np.sign(reward).astype(np.int8)
 
             # Store the transition in the replay memory
             replay_memory.append((memory_state, action, real_reward, stacked_frames.get_frames(), done))
             memory_state = stacked_frames.get_frames()
 
-            if step % 4 == 0 and len(replay_memory) >= parameters.N:
+            if step % 4 == 0 and len(replay_memory) == parameters.start_update:
                 # Sample a minibatch from the replay memory
                 minibatch = random.sample(replay_memory, minibatch_size)
-                update_q_network(agent, target_agent, minibatch, optimizer, gamma)
+                loss = update_q_network(agent, target_agent, minibatch, optimizer, gamma)
+                writter.add_scalar('Loss', loss, step)
 
             # Update the target network every C steps
-            if step % C_max == 0 and len(replay_memory) >= parameters.N:
+            if step % update_target_network == 0 and len(replay_memory) == parameters.start_update:
                 target_agent.load_state_dict(agent.state_dict())
 
             episode_reward += real_reward
@@ -173,11 +154,18 @@ def train_model(
             if done:
                 break
 
+        reward_last_100_episodes.append(episode_reward)
+        writter.add_scalar('Reward last 100 episodes', np.mean(reward_last_100_episodes), episode)
         writter.add_scalar('Episode reward', episode_reward, episode)
         writter.add_scalar('Episode length', episode_step, episode)
+        writter.add_scalar('Epsilon at the end of the episode', epsilon_value, episode)
         episode += 1
+        time_spent = int(time.time() - start_time)
+        progress_bar.update(time_spent - progress_bar.n)
 
     writter.flush()
     writter.close()
 
     env.close()
+
+    return episode
