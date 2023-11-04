@@ -1,6 +1,9 @@
 import random
 
 import gymnasium as gym
+import numpy as np
+
+from classes.stacked_frames import StackedFrames
 
 
 class AtariWrapper(gym.Wrapper):
@@ -11,57 +14,57 @@ class AtariWrapper(gym.Wrapper):
         self.play = play
         self.lives = 0
         self.has_to_reset = True
-        self.no_op_action = [action for action, meaning in enumerate(env.unwrapped.get_action_meanings()) if meaning == 'NOOP'][0]
+        self.no_op_action = [
+            action
+            for action, meaning in enumerate(env.unwrapped.get_action_meanings())
+            if meaning == "NOOP"
+        ][0]
+        self.stacked_frames = StackedFrames(4)
+        self.previous_state: np.ndarray = None
 
     def reset(self):
         if self.has_to_reset:
             self.has_to_reset = False
             state, info = self.env.reset()
-            self.lives = info['lives']
+            self.lives = info["lives"]
             # Play no-op action between 1 and 30 frames at the beginning of the game
             for _ in range(random.randint(1, 30)):
                 state, _, done, _, info = self.env.step(self.no_op_action)
-                if info['lives'] != self.lives:
+                if info["lives"] != self.lives:
                     done = True
                 if done:
                     state, info = self.env.reset()
 
         else:
             state, _, _, _, info = self.env.step(self.no_op_action)
-        
-        return state, info
-    
+
+        self.stacked_frames.reset(state)
+        self.previous_state = state
+
+        return self.stacked_frames.get_frames(), info
+
     def step(self, action):
-        next_state, reward, done, not_use, info = self.env.step(action)
-        self.has_to_reset = done
-        previous_state = next_state
-        if info['lives'] != self.lives:
-            self.lives = info['lives']
-            if self.play:
-                done = done
-            else:
-                done = True
-            info['previous_state'] = previous_state
-            return next_state, reward, done, not_use, info
-
-        sum_reward = reward
-        skip_frames = self.skip_frames - 1 # -1 because we already did one step
-        for skip in range(skip_frames):
-            if skip <= skip_frames - 2:
-                previous_state = next_state
-
+        sum_reward = 0.0
+        for _ in range(self.skip_frames):
             next_state, reward, done, not_use, info = self.env.step(action)
             self.has_to_reset = done
-            if info['lives'] != self.lives:
-                self.lives = info['lives']
-                done = True
-
+            self.stacked_frames.append(next_state, self.previous_state)
+            self.previous_state = next_state
             sum_reward += reward
-
-            if done:
+            if info["lives"] != self.lives:
+                self.lives = info["lives"]
                 if self.play:
                     done = self.has_to_reset
+                else:
+                    done = True
+
+            if done:
                 break
 
-        info['previous_state'] = previous_state
-        return next_state, sum_reward, done, not_use, info
+        return (
+            self.stacked_frames.get_frames(),
+            np.sign(sum_reward),
+            done,
+            not_use,
+            info,
+        )

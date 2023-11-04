@@ -22,9 +22,9 @@ env = gym.make(
     difficulty=int(sys.argv[3]),
     frameskip=1,
     repeat_action_probability=0.0,
-    obs_type='rgb',
+    obs_type="rgb",
     full_action_space=False,
-    render_mode='rgb_array'
+    render_mode="rgb_array",
 )
 
 n_actions = env.action_space.n
@@ -48,7 +48,7 @@ optimizer = optim.Adam(
 )
 
 print("=======")
-print(f'Training on {game_name}')
+print(f"Training on {game_name}")
 print("=======")
 
 episode_done = train_model(
@@ -61,24 +61,23 @@ episode_done = train_model(
 
 
 # Save model
-if not os.path.exists(os.path.join('models', game_name)):
-    os.makedirs(os.path.join('models', game_name))
+if not os.path.exists(os.path.join("models", game_name)):
+    os.makedirs(os.path.join("models", game_name))
 
 model_name: str
 if sys.argv[5]:
     model_name = sys.argv[5]
 else:
     counter = 0
-    for file in os.listdir(os.path.join('models', game_name)):
-        if file.startswith('model_'):
+    for file in os.listdir(os.path.join("models", game_name)):
+        if file.startswith("model_"):
             counter += 1
-    model_name = f'model_{counter}'
+    model_name = f"model_{counter}"
 
 state = {
-    'state_dict': agent.state_dict(),
-    'target_state_dict': target_agent.state_dict(),
-    'optimizer': optimizer.state_dict(),
-    # 'step': parameters.steps_per_training,
-    'episode': episode_done
+    "state_dict": agent.state_dict(),
+    "target_state_dict": target_agent.state_dict(),
+    "optimizer": optimizer.state_dict(),
+    "episode": episode_done,
 }
-torch.save(state, os.path.join('models', game_name, f'{model_name}.pt'))
+torch.save(state, os.path.join("models", game_name, f"{model_name}.pt"))
