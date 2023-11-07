@@ -122,6 +122,7 @@ def train_model(
     optimizer: torch.optim,
     game_name: str,
     model_name: str,
+    hours_to_train: int,
     episodes_already_done: int = 0,
     steps_already_done: int = 0,
     hours_already_done: int = 0,
@@ -151,7 +152,7 @@ def train_model(
     better_reward = 0.0
     reward_last_100_episodes = deque(maxlen=100)
 
-    max_seconds = parameters.seconds_per_training
+    max_seconds = parameters.seconds_per_training * hours_to_train
     progress_bar = tqdm(total=max_seconds, desc="Training", unit="s")
     while time_spent < max_seconds:
         state, _ = env.reset()

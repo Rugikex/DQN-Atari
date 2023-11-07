@@ -49,6 +49,8 @@ optimizer = optim.Adam(
 if not os.path.exists(os.path.join("models", game_name)):
     os.makedirs(os.path.join("models", game_name))
 
+hours_to_train = int(sys.argv[4])
+
 # Get model name
 model_name: str
 if sys.argv[5]:
@@ -65,7 +67,7 @@ print(f"Training on {game_name}")
 print("=======")
 
 episodes_done, steps_done, hours_done = train_model(
-    agent, target_agent, env, optimizer, game_name, model_name
+    agent, target_agent, env, optimizer, game_name, model_name, hours_to_train
 )
 
 # Save model

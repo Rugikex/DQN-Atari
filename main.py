@@ -8,7 +8,7 @@ def main():
     parser.add_argument(
         "action",
         choices=["train", "retrain", "play"],
-        help="Specify 'train', 'retrain or 'play'",
+        help="Specify 'train', 'retrain' or 'play'",
     )
     parser.add_argument("game_name", type=str, help="Name of the game")
 
@@ -18,11 +18,11 @@ def main():
         "--repeat",
         type=int,
         default=1,
-        help="Number of times to repeat the training (episodes * repeat)",
+        help="Number of hours to train or retrain the model",
     )
 
     parser.add_argument(
-        "--name", type=str, default=None, help="Name of the model to retrain or play"
+        "--name", type=str, default=None, help="Name of the model"
     )
 
     args = parser.parse_args()
