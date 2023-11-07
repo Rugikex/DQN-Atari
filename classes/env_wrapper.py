@@ -63,7 +63,7 @@ class AtariWrapper(gym.Wrapper):
 
         return (
             self.stacked_frames.get_frames(),
-            np.sign(sum_reward),
+            np.sign(sum_reward).astype(np.float32),
             done,
             not_use,
             info,

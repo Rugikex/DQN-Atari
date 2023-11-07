@@ -1,4 +1,3 @@
-from collections import deque
 import os
 import sys
 
@@ -34,36 +33,23 @@ target_agent = DeepQNetwork(n_actions).to(device)
 target_agent.load_state_dict(agent.state_dict())
 target_agent.eval()
 
-replay_memory = deque(maxlen=parameters.replay_memory_maxlen)
-
 # optimizer = optim.RMSprop(
 #     agent.parameters(),
-#     lr=0.000_25,
-#     momentum=0.95,
-#     eps=0.01
+#     lr=0.000_25, # Ok
+#     alpha=0.95, # ???
+#     eps=0.01, # Ok
+#     momentum=0.95 # ???
 # )
 optimizer = optim.Adam(
     agent.parameters(),
-    lr=0.000_25,
+    lr=1e-3,
 )
 
-print("=======")
-print(f"Training on {game_name}")
-print("=======")
-
-episode_done = train_model(
-    agent,
-    target_agent,
-    env,
-    replay_memory,
-    optimizer,
-)
-
-
-# Save model
+# Create folder for models if it doesn't exist
 if not os.path.exists(os.path.join("models", game_name)):
     os.makedirs(os.path.join("models", game_name))
 
+# Get model name
 model_name: str
 if sys.argv[5]:
     model_name = sys.argv[5]
@@ -74,10 +60,23 @@ else:
             counter += 1
     model_name = f"model_{counter}"
 
-state = {
-    "state_dict": agent.state_dict(),
-    "target_state_dict": target_agent.state_dict(),
-    "optimizer": optimizer.state_dict(),
-    "episode": episode_done,
-}
-torch.save(state, os.path.join("models", game_name, f"{model_name}.pt"))
+print("=======")
+print(f"Training on {game_name}")
+print("=======")
+
+episodes_done, steps_done, hours_done = train_model(
+    agent, target_agent, env, optimizer, game_name, model_name
+)
+
+# Save model
+torch.save(
+    {
+        "state_dict": agent.state_dict(),
+        "target_state_dict": target_agent.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "episodes": episodes_done,
+        "steps": steps_done,
+        "hours": hours_done,
+    },
+    os.path.join("models", game_name, f"{model_name}_last.pt"),
+)

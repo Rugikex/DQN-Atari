@@ -1,3 +1,5 @@
+from tqdm import tqdm
+
 import parameters
 
 
@@ -20,10 +22,13 @@ class EpsilonGreedyPolicy:
         )
         self._is_decay_ended = False
 
-        for _ in range(steps):
-            self.get_epsilon()
-            if self._is_decay_ended:
-                break
+        steps_to_decay = steps - parameters.replay_memory_maxlen
+        if steps_to_decay >= self._steps_to_epsilon_end:
+            self._is_decay_ended = True
+            self._epsilon = self._epsilon_end
+        else:
+            for _ in tqdm(range(steps_to_decay), desc="Decaying epsilon"):
+                self.get_epsilon()
 
     def get_epsilon(self) -> float:
         if not self._is_decay_ended:

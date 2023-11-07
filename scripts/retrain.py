@@ -1,21 +1,19 @@
-from collections import deque
 import os
-import pickle
 import re
 import sys
 
 import gymnasium as gym
-import tensorflow as tf
-from tensorflow.keras.models import load_model
+import torch
+import torch.optim as optim
 
 sys.path.append(os.path.join(os.getcwd()))
 
 from classes.dqn import DeepQNetwork
-from classes.policy import EpsilonGreedyPolicy
 from global_functions import get_model_path, train_model
 import parameters
 
-# TODO
+
+device = parameters.device
 game_name = sys.argv[1]
 
 env = gym.make(
@@ -29,53 +27,48 @@ env = gym.make(
     render_mode="rgb_array",
 )
 
+model_path = get_model_path(game_name, sys.argv[5])
+states = torch.load(os.path.join("models", game_name, model_path))
+n_actions = env.action_space.n
 
-model_path, replay_memory_path = get_model_path(game_name, sys.argv[5])
+agent = DeepQNetwork(n_actions).to(device)
+agent.load_state_dict(states["state_dict"])
 
-agent = DeepQNetwork(env.action_space.n).to
-agent.build((84, 84, 4))
-agent.load_weights(os.path.join("models", game_name, model_path))
+target_agent = DeepQNetwork(env.action_space.n).to(device)
+target_agent.load_state_dict(states["target_state_dict"])
 
-target_agent = DeepQNetwork(env.action_space.n)
-target_agent.load_weights(agent.get_weights())
-
-replay_memory: deque
-with open(os.path.join("models", game_name, replay_memory_path), "rb") as f:
-    replay_memory = pickle.load(f)
-
-M = parameters.M * int(sys.argv[4])
-epoque_already_played = int(
-    re.match(r"replay_memory_(\d+)\.pkl", replay_memory_path).group(1)
+optimizer = optim.Adam(
+    agent.parameters(),
+    lr=0.000_25,
 )
+optimizer.load_state_dict(states["optimizer"])
 
-# Restoring C and epsilon to the value it had when the model was saved
-C = (1 + epoque_already_played * parameters.T) % parameters.C_max
-epsilon = EpsilonGreedyPolicy(1.0, steps=epoque_already_played * parameters.T)
+episodes = states["episodes"]
+steps = states["steps"]
+hours = states["hours"]
 
-minibatch_size = 32
-gamma = 0.99
-optimizer = tf.keras.optimizers.RMSprop(
-    learning_rate=0.0025,
-    momentum=0.95,
-)
+parts_model_name = sys.argv[5].split("_")
+model_name = "_".join(parts_model_name[:-1])
 
 print("=======")
 print(
-    f"Retraining on {game_name} for episode {M} with {epoque_already_played} already played"
+    f"Retraining on {game_name} with model {model_path} (episodes: {episodes}, steps: {steps}, hours: {hours})"
 )
 print("=======")
 
-train_model(agent, target_agent, env, replay_memory, epsilon, optimizer, M, C)
-
-# Save learned model
-if not os.path.exists(os.path.join("models", game_name)):
-    os.makedirs(os.path.join("models", game_name))
-
-agent.save(
-    os.path.join("models", game_name, f"episode_{M + epoque_already_played}.keras")
+episodes_done, steps_done, hours_done = train_model(
+    agent, target_agent, env, optimizer, game_name, model_name, episodes, steps, hours
 )
-with open(
-    os.path.join("models", game_name, f"replay_memory_{M + epoque_already_played}.pkl"),
-    "wb",
-) as file:
-    pickle.dump(replay_memory, file)
+
+# Save model
+torch.save(
+    {
+        "state_dict": agent.state_dict(),
+        "target_state_dict": target_agent.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "episodes": episodes_done,
+        "steps": steps_done,
+        "hours": hours_done,
+    },
+    os.path.join("models", game_name, f"{model_name}_last.pt"),
+)

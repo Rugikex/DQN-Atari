@@ -31,12 +31,15 @@ env = gym.make(
 env = AtariWrapper(env, skip_frames=4, play=True)
 
 model_path = get_model_path(game_name, sys.argv[4])
-states_dict = torch.load(os.path.join("models", game_name, model_path))
+states = torch.load(os.path.join("models", game_name, model_path))
 # Load the model
 agent = DeepQNetwork(env.action_space.n).to(device)
-agent.load_state_dict(states_dict["state_dict"])
+agent.load_state_dict(states["state_dict"])
 agent.eval()
 
+episodes = states["episodes"]
+steps = states["steps"]
+hours = states["hours"]
 
 T = 1000
 
@@ -44,12 +47,11 @@ state, _ = env.reset()
 total_reward = 0
 
 print("=======")
-print(f"Playing {game_name} with model {model_path}")
+print(f"Playing {game_name} with model {model_path}, trained for {hours} hours")
 print("=======")
 
 t = 0
 while True:
-    # TODO: Decomment this to play randomly
     if random.random() < 0.05:
         action = env.action_space.sample()
     else:
