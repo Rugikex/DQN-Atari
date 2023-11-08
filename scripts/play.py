@@ -41,8 +41,6 @@ episodes = states["episodes"]
 steps = states["steps"]
 hours = states["hours"]
 
-T = 1000
-
 state, _ = env.reset()
 total_reward = 0
 

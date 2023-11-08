@@ -59,7 +59,16 @@ print(
 print("=======")
 
 episodes_done, steps_done, hours_done = train_model(
-    agent, target_agent, env, optimizer, game_name, model_name, hours_to_train, episodes, steps, hours
+    agent,
+    target_agent,
+    env,
+    optimizer,
+    game_name,
+    model_name,
+    hours_to_train,
+    episodes,
+    steps,
+    hours,
 )
 
 # Save model

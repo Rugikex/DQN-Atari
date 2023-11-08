@@ -16,21 +16,24 @@ sys.path.append(os.path.join(os.getcwd()))
 from classes.dqn import DeepQNetwork
 from classes.env_wrapper import AtariWrapper
 from classes.policy import EpsilonGreedyPolicy
+from classes.replay_memory import ReplayMemory
 import parameters
+
+GAMMA = 0.99
+MINIBATCH_SIZE = 32
+SECOND_PER_HOUR = 3600
 
 logs_path = os.path.join("logs")
 if not os.path.exists(logs_path):
     os.makedirs(logs_path)
 
 device = parameters.device
-gamma = 0.99
-minibatch_size = 32
 
 
 def fill_replay_memory(
     agent: DeepQNetwork,
     env: gym.Env,
-    replay_memory: deque,
+    replay_memory: ReplayMemory,
     epsilon: EpsilonGreedyPolicy,
     steps_already_done: int,
 ) -> None:
@@ -43,20 +46,7 @@ def fill_replay_memory(
     )
 
     for _ in tqdm(range(steps_to_fill), desc="Filling replay memory"):
-        action: np.int64
-        epsilon_value = epsilon.get_epsilon()
-        if random.uniform(0, 1) < epsilon_value:
-            # Choose a random action
-            action = env.action_space.sample()
-        else:
-            # Choose the action with the highest Q-value
-            observation = (
-                torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
-            )
-            with torch.no_grad():
-                q_values = agent(observation)
-            action = torch.argmax(q_values).item()
-
+        action = get_action(env, agent, epsilon, state)
         state, reward, done, _, _ = env.step(action)
 
         # Store the transition in the replay memory
@@ -66,6 +56,23 @@ def fill_replay_memory(
         if done:
             state, _ = env.reset()
             memory_state = state
+
+
+def get_action(
+    env: gym.Env, agent: DeepQNetwork, epsilon: EpsilonGreedyPolicy, state: np.ndarray
+) -> np.int64:
+    action: np.int64
+    if random.uniform(0, 1) < epsilon.get_epsilon():
+        # Choose a random action
+        action = env.action_space.sample()
+    else:
+        # Choose the action with the highest Q-value
+        observation = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+        with torch.no_grad():
+            q_values = agent(observation)
+        action = torch.argmax(q_values).item()
+
+    return action
 
 
 def get_model_path(game_name: str, model_name: str) -> str:
@@ -81,7 +88,7 @@ def update_q_network(
     target_agent: DeepQNetwork,
     minibatch: dict,
     optimizer: torch.optim,
-    gamma: float,
+    GAMMA: float,
 ) -> float:
     # Unpack the minibatch
     states, actions, rewards, next_states, dones = zip(*minibatch)
@@ -102,7 +109,7 @@ def update_q_network(
     # Compute the target Q-values using the target network
     next_q_values = target_agent(next_states)
     max_next_q_values, _ = next_q_values.max(1)
-    target_q_values = rewards + not_dones * gamma * max_next_q_values
+    target_q_values = rewards + not_dones * GAMMA * max_next_q_values
 
     # Compute loss
     loss = F.huber_loss(q_values, target_q_values.unsqueeze(1))
@@ -130,13 +137,14 @@ def train_model(
     # TODO: better logging -> track with retrain script
     writter = SummaryWriter(
         log_dir=os.path.join(
-            "logs", time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+            "logs",
+            f"{model_name}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}",
         )
     )
     env = AtariWrapper(env)
 
     epsilon = EpsilonGreedyPolicy(1.0, steps=steps_already_done)
-    replay_memory = deque(maxlen=parameters.replay_memory_maxlen)
+    replay_memory = ReplayMemory(parameters.replay_memory_maxlen)
     if steps_already_done != 0:
         fill_replay_memory(agent, env, replay_memory, epsilon, steps_already_done)
 
@@ -152,7 +160,7 @@ def train_model(
     better_reward = 0.0
     reward_last_100_episodes = deque(maxlen=100)
 
-    max_seconds = parameters.seconds_per_training * hours_to_train
+    max_seconds = SECOND_PER_HOUR * hours_to_train
     progress_bar = tqdm(total=max_seconds, desc="Training", unit="s")
     while time_spent < max_seconds:
         state, _ = env.reset()
@@ -161,23 +169,9 @@ def train_model(
         episode_reward: np.float64 = 0.0
         episode_step = 0
         done = False
-        epsilon_value: float
 
         while episode_step < parameters.steps_per_episode:
-            action: np.int64
-            epsilon_value = epsilon.get_epsilon()
-            if random.uniform(0, 1) < epsilon_value:
-                # Choose a random action
-                action = env.action_space.sample()
-            else:
-                # Choose the action with the highest Q-value
-                observation = (
-                    torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
-                )
-                with torch.no_grad():
-                    q_values = agent(observation)
-                action = torch.argmax(q_values).item()
-
+            action = get_action(env, agent, epsilon, state)
             state, reward, done, _, _ = env.step(action)
 
             # Store the transition in the replay memory
@@ -186,9 +180,9 @@ def train_model(
 
             if steps % 4 == 0 and len(replay_memory) >= parameters.start_update:
                 # Sample a minibatch from the replay memory
-                minibatch = random.sample(replay_memory, minibatch_size)
+                minibatch = replay_memory.sample(MINIBATCH_SIZE)
                 loss = update_q_network(
-                    agent, target_agent, minibatch, optimizer, gamma
+                    agent, target_agent, minibatch, optimizer, GAMMA
                 )
                 writter.add_scalar("Loss", loss, steps)
 
@@ -214,7 +208,7 @@ def train_model(
         writter.add_scalar("Episode reward", episode_reward, episodes)
         writter.add_scalar("Episode length", episode_step, episodes)
         writter.add_scalar(
-            "Epsilon at the end of the episodes", epsilon_value, episodes
+            "Epsilon at the end of the episode", epsilon.get_current_epsilon(), episodes
         )
 
         episodes += 1

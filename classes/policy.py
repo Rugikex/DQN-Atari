@@ -26,9 +26,12 @@ class EpsilonGreedyPolicy:
         if steps_to_decay >= self._steps_to_epsilon_end:
             self._is_decay_ended = True
             self._epsilon = self._epsilon_end
-        else:
+        elif steps_to_decay > 0:
             for _ in tqdm(range(steps_to_decay), desc="Decaying epsilon"):
                 self.get_epsilon()
+
+    def get_current_epsilon(self) -> float:
+        return self._epsilon
 
     def get_epsilon(self) -> float:
         if not self._is_decay_ended:

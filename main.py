@@ -21,9 +21,7 @@ def main():
         help="Number of hours to train or retrain the model",
     )
 
-    parser.add_argument(
-        "--name", type=str, default=None, help="Name of the model"
-    )
+    parser.add_argument("--name", type=str, default=None, help="Name of the model")
 
     args = parser.parse_args()
 

@@ -33,17 +33,17 @@ target_agent = DeepQNetwork(n_actions).to(device)
 target_agent.load_state_dict(agent.state_dict())
 target_agent.eval()
 
-# optimizer = optim.RMSprop(
-#     agent.parameters(),
-#     lr=0.000_25, # Ok
-#     alpha=0.95, # ???
-#     eps=0.01, # Ok
-#     momentum=0.95 # ???
-# )
-optimizer = optim.Adam(
+optimizer = optim.RMSprop(
     agent.parameters(),
-    lr=1e-3,
+    lr=0.000_25, # Ok
+    alpha=0.95, # ???
+    eps=0.01, # Ok
+    momentum=0.95 # ???
 )
+# optimizer = optim.Adam(
+#     agent.parameters(),
+#     lr=1e-3,
+# )
 
 # Create folder for models if it doesn't exist
 if not os.path.exists(os.path.join("models", game_name)):
@@ -57,10 +57,11 @@ if sys.argv[5]:
     model_name = sys.argv[5]
 else:
     counter = 0
+    prefix = "model_v"
     for file in os.listdir(os.path.join("models", game_name)):
-        if file.startswith("model_"):
+        if file.startswith(prefix):
             counter += 1
-    model_name = f"model_{counter}"
+    model_name = f"{prefix}{counter}"
 
 print("=======")
 print(f"Training on {game_name}")
