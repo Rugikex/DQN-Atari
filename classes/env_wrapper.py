@@ -7,6 +7,19 @@ from classes.stacked_frames import StackedFrames
 
 
 class AtariWrapper(gym.Wrapper):
+    """
+    Wrapper for Atari games
+
+    Parameters
+    ----------
+    env : gym.Env
+        Environment
+    skip_frames : int
+        Number of frames to skip between each action
+    play : bool
+        Whether to play the game or train the agent
+    """
+
     def __init__(self, env, skip_frames=4, play=False):
         super(AtariWrapper, self).__init__(env)
         self.env = env
@@ -23,6 +36,18 @@ class AtariWrapper(gym.Wrapper):
         self.previous_state: np.ndarray = None
 
     def reset(self):
+        """
+        Reset the environment
+        Play no-op action between 1 and 30 frames at the beginning of the game
+        Only really reset the environment if the game is over
+
+        Returns
+        -------
+        stacked_frames : np.ndarray
+            Stacked frames (4, 84, 84)
+        info : dict
+            Information about the environment
+        """
         if self.has_to_reset:
             self.has_to_reset = False
             state, info = self.env.reset()
@@ -44,6 +69,28 @@ class AtariWrapper(gym.Wrapper):
         return self.stacked_frames.get_frames(), info
 
     def step(self, action):
+        """
+        Step the environment with the given action
+        Repeat the action self.skip_frames times and stack the frames
+
+        Parameters
+        ----------
+        action : int
+            Action to take
+
+        Returns
+        -------
+        stacked_frames : np.ndarray
+            Stacked frames (4, 84, 84)
+        reward : float
+            Reward
+        done : bool
+            Whether the episode is done
+        not_use : None
+            Not used
+        info : dict
+            Information about the environment
+        """
         sum_reward = 0.0
         for _ in range(self.skip_frames):
             next_state, reward, done, not_use, info = self.env.step(action)

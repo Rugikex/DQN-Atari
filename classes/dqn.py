@@ -3,7 +3,19 @@ import torch.nn as nn
 
 
 class DeepQNetwork(nn.Module):
-    def __init__(self, num_actions, input_shape=(4, 84, 84)):
+    """
+    Deep Q Network
+
+    Parameters
+    ----------
+    num_actions: int
+        Number of actions
+    input_shape: tuple
+        Shape of the input
+        default: (4, 84, 84)
+    """
+
+    def __init__(self, num_actions: int, input_shape: tuple = (4, 84, 84)):
         super().__init__()
 
         self.cnn = nn.Sequential(
@@ -19,7 +31,20 @@ class DeepQNetwork(nn.Module):
         self.activation = nn.ReLU()
         self.fc2 = nn.Linear(512, num_actions)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+
+        Parameters
+        ----------
+        x: torch.Tensor
+            Input tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor
+        """
         x = self.cnn(x)
         x = x.view(x.size(0), -1)  # Flatten the tensor
         x = self.activation(self.fc1(x))

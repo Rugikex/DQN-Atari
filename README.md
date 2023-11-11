@@ -59,15 +59,13 @@ Warning: The name of the model must not end with `_{NUMBER}`, `_best` or `_last`
 
 ## Explanation of the implementation
 
-The pseudo-code of the algorithm is given in the article, but some details are implemented differently in the code. The main differences are listed below.
-
-- The optimizer is not the RMSProp optimizer, but the Adam optimizer. The learning rate is 0.001 instead of 0.00025. The main reason for this change is that the Adam optimizer is more stable than the RMSProp optimizer and some hyperparameters given in the article can't be used with the RMSProp optimizer of PyTorch.
-- The replay memory size is 600000 instead of 1000000. My computer does not have enough memory to store 1000000 transitions in the replay memory.
+The pseudo-code of the algorithm is given in the article, but some details are implemented differently in the code. The main difference is the replay memory size is 600000 instead of 1000000. My computer does not have enough memory to store 1000000 transitions in the replay memory.
 
 The training process about the number of steps, episodes or hours is not implemented. In my case, I trained the model with hours because it is easier to estimate the time of training and I needed my computer for other tasks. The training process is stopped when the model is trained for the number of hours specified in the arguments.
 
-The model is saved every hour, it contains the weights of the model and the target model, the optimizer state, the number of steps, episodes and hours of training. The replay memory is not saved because it is too big, but it is initialized with the same size with the same epsilon value at the given step, but the transitions are not the same and it is with the trained model that the replay memory is filled.
-It is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth` where `NAME` is the name given in the arguments and `SUFFIX` is the number of hours of training or best or last. Last is the same as the last number of hours of training.
+The model is saved every hour, it contains the weights of the model and the target model, the optimizer state, the number of steps, episodes and hours of training.<br>
+It is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth` where `NAME` is the name given in the arguments and `SUFFIX` is the number of hours of training or best or last. Last is the same as the last number of hours of training.<br>
+However, the replay memory is not saved because it is too big, but it is initialized at the beginning of the training with the transitions of the last model until the replay memory size reaches the starting size to train the model. The main inconvenient is the transitions are not the same because the transitions are sampled with the fixed model and not the continuous training model.
 
 ## Results
 

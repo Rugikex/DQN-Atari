@@ -2,6 +2,27 @@ from random import sample
 
 
 class ReplayMemory:
+    """
+    Replay memory that stores the transitions
+    Deque is not used because it is slower with random access
+
+    Parameters
+    ----------
+    max_size: int
+        Maximum size of the replay memory
+
+    Attributes
+    ----------
+    buffer: list
+        List of transitions
+    max_size: int
+        Maximum size of the replay memory
+    index: int
+        Index of the last transition
+    size: int
+        Current size of the replay memory
+    """
+
     def __init__(self, max_size):
         self.buffer = [None] * max_size
         self.max_size = max_size

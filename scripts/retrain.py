@@ -10,11 +10,12 @@ sys.path.append(os.path.join(os.getcwd()))
 
 from classes.dqn import DeepQNetwork
 from global_functions import get_model_path, train_model
-import parameters
+from parameters import DEVICE
 
 
-device = parameters.device
 game_name = sys.argv[1]
+model_path = get_model_path(game_name, sys.argv[5])
+states = torch.load(os.path.join("models", game_name, model_path))
 
 env = gym.make(
     game_name,
@@ -27,20 +28,16 @@ env = gym.make(
     render_mode="rgb_array",
 )
 
-model_path = get_model_path(game_name, sys.argv[5])
-states = torch.load(os.path.join("models", game_name, model_path))
 n_actions = env.action_space.n
 
-agent = DeepQNetwork(n_actions).to(device)
+agent = DeepQNetwork(n_actions).to(DEVICE)
 agent.load_state_dict(states["state_dict"])
 
-target_agent = DeepQNetwork(env.action_space.n).to(device)
+target_agent = DeepQNetwork(n_actions).to(DEVICE)
 target_agent.load_state_dict(states["target_state_dict"])
+target_agent.eval()  # Target network is not trained
 
-optimizer = optim.Adam(
-    agent.parameters(),
-    lr=0.000_25,
-)
+optimizer = optim.RMSprop(agent.parameters(), lr=0.000_25, alpha=0.95, eps=0.01)
 optimizer.load_state_dict(states["optimizer"])
 
 hours_to_train = int(sys.argv[4])

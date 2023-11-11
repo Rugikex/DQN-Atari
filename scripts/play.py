@@ -11,11 +11,12 @@ from classes.dqn import DeepQNetwork
 from classes.env_wrapper import AtariWrapper
 from global_functions import get_model_path
 
-import parameters
+from parameters import DEVICE
 
 
-device = parameters.device
 game_name = sys.argv[1]
+model_path = get_model_path(game_name, sys.argv[4])
+states = torch.load(os.path.join("models", game_name, model_path))
 
 env = gym.make(
     game_name,
@@ -30,10 +31,7 @@ env = gym.make(
 
 env = AtariWrapper(env, skip_frames=4, play=True)
 
-model_path = get_model_path(game_name, sys.argv[4])
-states = torch.load(os.path.join("models", game_name, model_path))
-# Load the model
-agent = DeepQNetwork(env.action_space.n).to(device)
+agent = DeepQNetwork(env.action_space.n).to(DEVICE)
 agent.load_state_dict(states["state_dict"])
 agent.eval()
 
@@ -45,7 +43,9 @@ state, _ = env.reset()
 total_reward = 0
 
 print("=======")
-print(f"Playing {game_name} with model {model_path}, trained for {hours} hours")
+print(
+    f"Playing {game_name} with model {model_path}, trained for {episodes} episodes, {steps} steps, {hours} hours"
+)
 print("=======")
 
 t = 0
@@ -53,7 +53,9 @@ while True:
     if random.random() < 0.05:
         action = env.action_space.sample()
     else:
-        observation = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+        observation = (
+            torch.as_tensor(state, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+        )
         with torch.no_grad():
             q_values = agent(observation)
         action = torch.argmax(q_values).item()

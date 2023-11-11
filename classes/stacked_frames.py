@@ -5,12 +5,36 @@ import numpy as np
 
 
 class StackedFrames:
+    """
+    Stack frames to feed them to the agent
+
+    Parameters
+    ----------
+    stack_size : int
+        Number of frames to stack
+    """
+
     def __init__(self, stack_size: int) -> None:
         self._frames: deque = deque(maxlen=stack_size)
 
     def _preprocess_frame(
         self, frame: np.ndarray, previous_frame: np.ndarray
     ) -> np.ndarray:
+        """
+        Preprocess the frame before appending it to the stack
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            Current frame
+        previous_frame : np.ndarray
+            Previous frame
+
+        Returns
+        -------
+        resized_frame : np.ndarray
+            Resized frame
+        """
         # Take maximum of current and previous frame rgb values
         max_frame = np.maximum(frame, previous_frame)
 
@@ -26,13 +50,38 @@ class StackedFrames:
         return resized_frame.astype(np.uint8)
 
     def append(self, frame: np.ndarray, previous_frame: np.ndarray) -> None:
+        """
+        Append a frame to the stack
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            Current frame
+        previous_frame : np.ndarray
+            Previous frame
+        """
         self._frames.append(self._preprocess_frame(frame, previous_frame))
 
     def get_frames(self) -> np.ndarray:
-        # Return a numpy array of shape (4, 84, 84)
+        """
+        Get the stacked frames
+
+        Returns
+        -------
+        frames : np.ndarray
+            Stacked frames
+        """
         return np.array(self._frames)
 
     def reset(self, frame: np.ndarray) -> None:
+        """
+        Reset the stack with the first frame
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            First frame
+        """
         previous_frame = np.zeros(frame.shape, dtype=frame.dtype)
         initial_frame = self._preprocess_frame(frame, previous_frame)
         for _ in range(self._frames.maxlen):

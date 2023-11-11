@@ -1,9 +1,9 @@
 import torch
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-start_update = 50_000
-replay_memory_maxlen = 600_000
-update_target_network = 10_000
-steps_per_episode = 2_000
-epsilon_final_step = 1_000_000
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+START_UPDATE = 50_000
+REPLAY_MEMORY_MAXLEN = 600_000
+UPDATE_TARGET_NETWORK = 10_000
+STEPS_PER_EPISODE = 2_000
+EPSILON_FINAL_STEP = 1_000_000

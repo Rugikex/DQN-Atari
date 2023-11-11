@@ -1,16 +1,33 @@
 from tqdm import tqdm
 
-import parameters
+from parameters import EPSILON_FINAL_STEP, START_UPDATE
 
 
 class EpsilonGreedyPolicy:
+    """
+    Epsilon-greedy policy
+
+    Parameters
+    ----------
+    epsilon_init : float
+        Initial epsilon value
+    epsilon_end : float
+        Final epsilon value
+    steps : int
+        Number of steps already done
+    steps_to_start_decay : int
+        Number of steps to start decaying epsilon
+    steps_to_epsilon_end : int
+        Number of steps to reach final epsilon value
+    """
+
     def __init__(
         self,
         epsilon_init: float,
         epsilon_end: float = 0.1,
         steps: int = 0,
-        steps_to_start_decay: int = parameters.start_update,
-        steps_to_epsilon_end: int = parameters.epsilon_final_step,
+        steps_to_start_decay: int = START_UPDATE,
+        steps_to_epsilon_end: int = EPSILON_FINAL_STEP,
     ) -> None:
         self._epsilon = epsilon_init
         self._epsilon_end = epsilon_end
@@ -22,7 +39,7 @@ class EpsilonGreedyPolicy:
         )
         self._is_decay_ended = False
 
-        steps_to_decay = steps - parameters.replay_memory_maxlen
+        steps_to_decay = steps - steps_to_start_decay
         if steps_to_decay >= self._steps_to_epsilon_end:
             self._is_decay_ended = True
             self._epsilon = self._epsilon_end

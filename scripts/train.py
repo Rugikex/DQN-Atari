@@ -9,10 +9,9 @@ sys.path.append(os.path.join(os.getcwd()))
 
 from classes.dqn import DeepQNetwork
 from global_functions import train_model
-import parameters
+from parameters import DEVICE
 
 
-device = parameters.device
 game_name = sys.argv[1]
 
 env = gym.make(
@@ -28,22 +27,12 @@ env = gym.make(
 
 n_actions = env.action_space.n
 
-agent = DeepQNetwork(n_actions).to(device)
-target_agent = DeepQNetwork(n_actions).to(device)
+agent = DeepQNetwork(n_actions).to(DEVICE)
+target_agent = DeepQNetwork(n_actions).to(DEVICE)
 target_agent.load_state_dict(agent.state_dict())
-target_agent.eval()
+target_agent.eval()  # Target network is not trained
 
-optimizer = optim.RMSprop(
-    agent.parameters(),
-    lr=0.000_25, # Ok
-    alpha=0.95, # ???
-    eps=0.01, # Ok
-    momentum=0.95 # ???
-)
-# optimizer = optim.Adam(
-#     agent.parameters(),
-#     lr=1e-3,
-# )
+optimizer = optim.RMSprop(agent.parameters(), lr=0.000_25, alpha=0.95, eps=0.01)
 
 # Create folder for models if it doesn't exist
 if not os.path.exists(os.path.join("models", game_name)):
