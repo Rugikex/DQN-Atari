@@ -16,5 +16,5 @@ def clear_models():
     print("Models cleared")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     clear_models()

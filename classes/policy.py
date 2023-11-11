@@ -16,6 +16,7 @@ class EpsilonGreedyPolicy:
     steps_to_epsilon_end : int
         Number of steps to reach final epsilon value
     """
+
     def __init__(
         self,
         epsilon_init: float,

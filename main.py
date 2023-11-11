@@ -34,9 +34,9 @@ def main():
 
     if args.repeat < 1:
         raise Exception("The number of repeats must be greater than 0")
-    
+
     render_mode = "human" if args.action == "play" else "rgb_array"
-    
+
     env = gym.make(
         args.game_name,
         mode=args.mode,

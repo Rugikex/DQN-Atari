@@ -39,18 +39,23 @@ class AtariAgent:
     play : bool, optional
         Play mode, by default False
     """
+
     def __init__(self, game_name: str, env: gym.Env, play: bool = False) -> None:
         self.game_name = game_name
         self.env = AtariWrapper(env, play=play)
         self.online_network = DeepQNetwork(env.action_space.n).to(DEVICE)
         self.target_network = DeepQNetwork(env.action_space.n).to(DEVICE)
         self.target_network.load_state_dict(self.online_network.state_dict())
-        self.target_network.eval() # Target network is not trained
-        self.optimizer = torch.optim.RMSprop(self.online_network.parameters(), lr=0.000_25, alpha=0.95, eps=0.01)
+        self.target_network.eval()  # Target network is not trained
+        self.optimizer = torch.optim.RMSprop(
+            self.online_network.parameters(), lr=0.000_25, alpha=0.95, eps=0.01
+        )
         if play:
             self.policy = EpsilonGreedyPolicy(0.05, 0.05, 0, 0)
         else:
-            self.policy = EpsilonGreedyPolicy(1.0, 0.1, START_UPDATE, EPSILON_FINAL_STEP)
+            self.policy = EpsilonGreedyPolicy(
+                1.0, 0.1, START_UPDATE, EPSILON_FINAL_STEP
+            )
         self.replay_memory = ReplayMemory(REPLAY_MEMORY_MAXLEN)
         self.model_name = None
         self.episodes = 0
@@ -89,13 +94,15 @@ class AtariAgent:
         model_path = os.path.join("models", self.game_name, f"{self.model_name}.pt")
         if not os.path.exists(model_path):
             # If the model doesn't exist, maybe the user want to load the last model
-            model_path = os.path.join("models", self.game_name, f"{self.model_name}_last.pt")
+            model_path = os.path.join(
+                "models", self.game_name, f"{self.model_name}_last.pt"
+            )
             if not os.path.exists(model_path):
                 raise Exception("Model not found")
             self.model_name = f"{self.model_name}_last"
-        
+
         return model_path
-    
+
     def _get_action(self, state: np.ndarray) -> np.int64:
         """
         Get the action to take
@@ -126,7 +133,7 @@ class AtariAgent:
             action = torch.argmax(q_values).item()
 
         return action
-    
+
     def _save_model(self, suffix: str = None) -> None:
         """
         Save the model
@@ -149,7 +156,7 @@ class AtariAgent:
             },
             os.path.join("models", self.game_name, f"{self.model_name}_{suffix}.pt"),
         )
-    
+
     def _update_q_network(
         self,
         minibatch: dict,
@@ -174,7 +181,9 @@ class AtariAgent:
         states = torch.as_tensor(np.array(states), dtype=torch.float32).to(DEVICE)
         actions = torch.as_tensor(actions).to(DEVICE)
         rewards = torch.as_tensor(rewards).to(DEVICE)
-        next_states = torch.as_tensor(np.array(next_states), dtype=torch.float32).to(DEVICE)
+        next_states = torch.as_tensor(np.array(next_states), dtype=torch.float32).to(
+            DEVICE
+        )
         not_dones = torch.logical_not(torch.as_tensor(dones).to(DEVICE))
 
         # Compute Q-values for the current state
@@ -259,7 +268,10 @@ class AtariAgent:
         )
 
         print("=======")
-        print(f"Training on {self.game_name} with model {self.model_name} for {hours_to_train} hours\nAlready done: {self.hours} hours, {self.episodes} episodes, {self.steps} steps")
+        print(
+            f"Training on {self.game_name} with model {self.model_name} for {hours_to_train} hours\n"
+            f"Already done: {self.hours} hours, {self.episodes} episodes, {self.steps} steps"
+        )
         print("=======")
 
         time_spent = 0
@@ -298,7 +310,9 @@ class AtariAgent:
                     self.steps % UPDATE_TARGET_NETWORK == 0
                     and len(self.replay_memory) >= START_UPDATE
                 ):
-                    self.target_network.load_state_dict(self.online_network.state_dict())
+                    self.target_network.load_state_dict(
+                        self.online_network.state_dict()
+                    )
 
                 episode_reward += reward
                 episode_step += 1
@@ -311,15 +325,21 @@ class AtariAgent:
             length_last_100_episodes.append(episode_step)
 
             writer.add_scalar(
-                "Epsilon at the end of the episode", self.policy.get_current_epsilon(), self.episodes
+                "Epsilon at the end of the episode",
+                self.policy.get_current_epsilon(),
+                self.episodes,
             )
             writer.add_scalar("Rewards/Episode", episode_reward, self.episodes)
             writer.add_scalar(
-                "Rewards/Last_100_episodes", np.mean(reward_last_100_episodes), self.episodes
+                "Rewards/Last_100_episodes",
+                np.mean(reward_last_100_episodes),
+                self.episodes,
             )
             writer.add_scalar("Lengths/Episode", episode_step, self.episodes)
             writer.add_scalar(
-                "Lengths/Last_100_episodes", np.mean(length_last_100_episodes), self.episodes
+                "Lengths/Last_100_episodes",
+                np.mean(length_last_100_episodes),
+                self.episodes,
             )
 
             self.episodes += 1
@@ -355,7 +375,10 @@ class AtariAgent:
         total_reward = 0.0
 
         print("=======")
-        print(f"Playing {self.game_name} with model {self.model_name}, trained for {self.episodes} episodes, {self.steps} steps, {self.hours} hours")
+        print(
+            f"Playing {self.game_name} with model {self.model_name}\n"
+            f"Trained for {self.episodes} episodes, {self.steps} steps, {self.hours} hours"
+        )
         print("=======")
 
         state, _ = self.env.reset()
