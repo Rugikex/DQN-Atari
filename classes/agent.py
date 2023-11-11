@@ -178,12 +178,13 @@ class AtariAgent:
         not_dones = torch.logical_not(torch.as_tensor(dones).to(DEVICE))
 
         # Compute Q-values for the current state
-        self.target_network.train()
+        self.online_network.train()
         q_values = self.online_network(states)
         q_values = q_values.gather(1, actions.unsqueeze(1))
 
         # Compute the target Q-values using the target network
-        next_q_values = self.target_network(next_states)
+        with torch.no_grad():
+            next_q_values = self.target_network(next_states)
         max_next_q_values, _ = next_q_values.max(1)
         target_q_values = rewards + not_dones * GAMMA * max_next_q_values
 
@@ -214,8 +215,6 @@ class AtariAgent:
         states = torch.load(model_path)
         self.online_network.load_state_dict(states["state_dict"])
         self.target_network.load_state_dict(states["target_state_dict"])
-        if self.target_network.training:
-            print("Target network is training")
         self.optimizer.load_state_dict(states["optimizer"])
         self.episodes = states["episodes"]
         self.steps = states["steps"]
