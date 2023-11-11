@@ -240,7 +240,8 @@ def train_model(
     writer = SummaryWriter(
         log_dir=os.path.join(
             "logs",
-            f"{model_name}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}",
+            model_name,
+            time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),
         )
     )
     env = AtariWrapper(env)
