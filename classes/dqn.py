@@ -15,7 +15,7 @@ class DeepQNetwork(nn.Module):
         default: (4, 84, 84)
     """
 
-    def __init__(self, num_actions: int, input_shape: tuple = (4, 84, 84)):
+    def __init__(self, num_actions: int, input_shape: tuple = (4, 84, 84)) -> None:
         super().__init__()
 
         self.cnn = nn.Sequential(

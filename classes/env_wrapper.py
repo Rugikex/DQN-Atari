@@ -20,7 +20,7 @@ class AtariWrapper(gym.Wrapper):
         Whether to play the game or train the agent
     """
 
-    def __init__(self, env, skip_frames=4, play=False):
+    def __init__(self, env, skip_frames=4, play=False) -> None:
         super(AtariWrapper, self).__init__(env)
         self.env = env
         self.skip_frames = skip_frames
@@ -35,7 +35,7 @@ class AtariWrapper(gym.Wrapper):
         self.stacked_frames = StackedFrames(4)
         self.previous_state: np.ndarray = None
 
-    def reset(self):
+    def reset(self) -> tuple:
         """
         Reset the environment
         Play no-op action between 1 and 30 frames at the beginning of the game
@@ -68,7 +68,7 @@ class AtariWrapper(gym.Wrapper):
 
         return self.stacked_frames.get_frames(), info
 
-    def step(self, action):
+    def step(self, action) -> tuple:
         """
         Step the environment with the given action
         Repeat the action self.skip_frames times and stack the frames

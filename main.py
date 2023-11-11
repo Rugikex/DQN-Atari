@@ -1,5 +1,12 @@
 import argparse
 import os
+import sys
+
+import gymnasium as gym
+
+sys.path.append(os.getcwd())
+
+from classes.agent import AtariAgent
 
 
 def main():
@@ -27,24 +34,32 @@ def main():
 
     if args.repeat < 1:
         raise Exception("The number of repeats must be greater than 0")
+    
+    render_mode = "human" if args.action == "play" else "rgb_array"
+    
+    env = gym.make(
+        args.game_name,
+        mode=args.mode,
+        difficulty=args.difficulty,
+        frameskip=1,
+        repeat_action_probability=0.0,
+        obs_type="rgb",
+        full_action_space=False,
+        render_mode=render_mode,
+    )
+
+    agent = AtariAgent(args.game_name, env, play=args.action == "play")
 
     if args.action == "train":
-        script_path = os.path.join("scripts", "train.py")
-        os.system(
-            f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat} {args.name}"
-        )
+        agent.train(args.repeat, args.name)
 
     elif args.action == "retrain":
-        script_path = os.path.join("scripts", "retrain.py")
-        os.system(
-            f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.repeat} {args.name}"
-        )
+        agent.load_model(args.name)
+        agent.train(args.repeat, args.name)
 
     elif args.action == "play":
-        script_path = os.path.join("scripts", "play.py")
-        os.system(
-            f"python {script_path} {args.game_name} {args.mode} {args.difficulty} {args.name}"
-        )
+        agent.load_model(args.name, play=True)
+        agent.play()
 
 
 if __name__ == "__main__":
