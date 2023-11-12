@@ -61,6 +61,8 @@ class AtariAgent:
         self.episodes = 0
         self.steps = 0
         self.hours = 0
+        self.time_to_save = 0
+        self.best_mean_reward = 0.0
 
     def _fill_replay_memory(self) -> None:
         """
@@ -99,7 +101,11 @@ class AtariAgent:
             )
             if not os.path.exists(model_path):
                 raise Exception("Model not found")
-            self.model_name = f"{self.model_name}_last"
+
+        # Get the name of the model without the suffix
+        match = re.match(r"^(.*?)(_[0-9]+|_last|_best)?$", self.model_name)
+        if match:
+            self.model_name = match.group(1)
 
         return model_path
 
@@ -143,6 +149,10 @@ class AtariAgent:
         suffix : str, optional
             Suffix of the model name, by default None
         """
+        # Create the folder if it doesn't exist
+        if not os.path.exists(os.path.join("models", self.game_name)):
+            os.makedirs(os.path.join("models", self.game_name))
+
         if not suffix:
             suffix = self.hours
         torch.save(
@@ -153,6 +163,8 @@ class AtariAgent:
                 "episodes": self.episodes,
                 "steps": self.steps,
                 "hours": self.hours,
+                "time_to_save": self.time_to_save,
+                "best_mean_reward": self.best_mean_reward,
             },
             os.path.join("models", self.game_name, f"{self.model_name}_{suffix}.pt"),
         )
@@ -228,6 +240,8 @@ class AtariAgent:
         self.episodes = states["episodes"]
         self.steps = states["steps"]
         self.hours = states["hours"]
+        self.time_to_save = states["time_to_save"]
+        self.best_mean_reward = states["best_mean_reward"]
         if not play:
             self.policy.decaying_epsilon(self.steps)
             self._fill_replay_memory()
@@ -275,8 +289,6 @@ class AtariAgent:
         print("=======")
 
         time_spent = 0
-        time_spent_to_save = self.steps % SECOND_PER_HOUR
-        better_reward = 0.0
         reward_last_100_episodes = deque(maxlen=100)
         length_last_100_episodes = deque(maxlen=100)
 
@@ -346,16 +358,20 @@ class AtariAgent:
             time_spent = int(time.time() - start_time)
             increment = time_spent - progress_bar.n
             progress_bar.update(increment)
-            time_spent_to_save += increment
+            self.time_to_save += increment
 
             # Save the model every hour
-            if time_spent_to_save >= SECOND_PER_HOUR:
+            if self.time_to_save >= SECOND_PER_HOUR:
+                self.time_to_save = self.time_to_save % SECOND_PER_HOUR
                 self.hours += 1
                 self._save_model()
 
             # Save the best model with the best mean reward over the last 100 episodes
-            if self.hours > 0 and np.mean(reward_last_100_episodes) > better_reward:
-                better_reward = np.mean(reward_last_100_episodes)
+            if (
+                time_spent >= SECOND_PER_HOUR
+                and np.mean(reward_last_100_episodes) > self.best_mean_reward
+            ):
+                self.best_mean_reward = np.mean(reward_last_100_episodes)
                 self._save_model("best")
 
         progress_bar.close()
