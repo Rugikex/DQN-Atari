@@ -38,13 +38,11 @@ class StackedFrames:
         # Take maximum of current and previous frame rgb values
         max_frame = np.maximum(frame, previous_frame)
 
-        # Extract luminance
-        luminance_frame = np.dot(max_frame, [0.299, 0.587, 0.114])
+        # Extract luminance from the frame
+        luminance_frame = cv2.cvtColor(max_frame, cv2.COLOR_BGR2YUV)[:, :, 0]
 
-        # Rescale to 84x84
-        resized_frame = cv2.resize(
-            luminance_frame, (84, 84), interpolation=cv2.INTER_AREA
-        )
+        # Resize the Y component to 84x84
+        resized_frame = cv2.resize(luminance_frame, (84, 84), interpolation=cv2.INTER_AREA)
 
         # Convert to uint8 to save memory
         return resized_frame.astype(np.uint8)

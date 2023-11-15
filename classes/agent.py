@@ -209,11 +209,11 @@ class AtariAgent:
         max_next_q_values, _ = next_q_values.max(1)
         target_q_values = rewards + not_dones * GAMMA * max_next_q_values
 
-        # Clip error to be between -1 and 1
-        error = (q_values - target_q_values.unsqueeze(1)).clamp(-1, 1)
-
-        # Compute loss
-        loss = torch.mean(torch.square(error))
+        # Compute the loss
+        # There is a paragraph in the paper about the optimization of the loss function
+        # to clip the error between -1 and 1 but the explanation is not very clear
+        # so I use the Huber loss instead with delta=1
+        loss = torch.nn.HuberLoss()(q_values, target_q_values.unsqueeze(1))
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -230,6 +230,8 @@ class AtariAgent:
         ----------
         model_name : str
             Name of the model
+        play : bool, optional
+            Play mode, by default False
         """
         self.model_name = model_name
         model_path = self._get_model_path()

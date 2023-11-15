@@ -108,9 +108,15 @@ class AtariWrapper(gym.Wrapper):
             if done:
                 break
 
+        reward: np.float32
+        if self.play:
+            reward = sum_reward
+        else:
+            reward = np.sign(sum_reward).astype(np.float32)
+
         return (
             self.stacked_frames.get_frames(),
-            np.sign(sum_reward).astype(np.float32),
+            reward,
             done,
             not_use,
             info,
