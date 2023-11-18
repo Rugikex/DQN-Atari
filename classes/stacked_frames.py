@@ -42,7 +42,9 @@ class StackedFrames:
         luminance_frame = cv2.cvtColor(max_frame, cv2.COLOR_BGR2YUV)[:, :, 0]
 
         # Resize the Y component to 84x84
-        resized_frame = cv2.resize(luminance_frame, (84, 84), interpolation=cv2.INTER_AREA)
+        resized_frame = cv2.resize(
+            luminance_frame, (84, 84), interpolation=cv2.INTER_AREA
+        )
 
         # Convert to uint8 to save memory
         return resized_frame.astype(np.uint8)

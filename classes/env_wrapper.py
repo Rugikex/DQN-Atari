@@ -34,6 +34,7 @@ class AtariWrapper(gym.Wrapper):
         ][0]
         self.stacked_frames = StackedFrames(4)
         self.previous_state: np.ndarray = None
+        self.info = {}
 
     def reset(self) -> tuple:
         """
@@ -60,11 +61,11 @@ class AtariWrapper(gym.Wrapper):
                 if done:
                     state, info = self.env.reset()
 
-        else:
-            state, _, _, _, info = self.env.step(self.no_op_action)
+            self.stacked_frames.reset(state)
+            self.previous_state = state
 
-        self.stacked_frames.reset(state)
-        self.previous_state = state
+        else:
+            info = self.info
 
         return self.stacked_frames.get_frames(), info
 
@@ -92,31 +93,28 @@ class AtariWrapper(gym.Wrapper):
             Information about the environment
         """
         sum_reward = 0.0
+        next_state = self.previous_state
+        done_episode = False
         for _ in range(self.skip_frames):
+            self.previous_state = next_state
             next_state, reward, done, not_use, info = self.env.step(action)
             self.has_to_reset = done
-            self.stacked_frames.append(next_state, self.previous_state)
-            self.previous_state = next_state
             sum_reward += reward
             if info["lives"] != self.lives:
                 self.lives = info["lives"]
-                if self.play:
-                    done = self.has_to_reset
-                else:
-                    done = True
+                if not self.play:
+                    done_episode = True
 
-            if done:
-                break
+        self.stacked_frames.append(next_state, self.previous_state)
+        self.previous_state = next_state
 
-        reward: np.float32
-        if self.play:
-            reward = sum_reward
-        else:
-            reward = np.sign(sum_reward).astype(np.float32)
+        self.info = info
+        done = done or done_episode
+        info["real_reward"] = sum_reward
 
         return (
             self.stacked_frames.get_frames(),
-            reward,
+            np.sign(sum_reward).astype(np.float32),
             done,
             not_use,
             info,

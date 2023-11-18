@@ -200,6 +200,8 @@ class AtariAgent:
 
         # Compute Q-values for the current state
         self.online_network.train()
+        self.optimizer.zero_grad()
+
         q_values = self.online_network(states)
         q_values = q_values.gather(1, actions.unsqueeze(1))
 
@@ -216,8 +218,12 @@ class AtariAgent:
         loss = torch.nn.HuberLoss()(q_values, target_q_values.unsqueeze(1))
 
         # Optimize the model
-        self.optimizer.zero_grad()
         loss.backward()
+
+        # Gradient clipping
+        for param in self.online_network.parameters():
+            param.grad.data.clamp_(-1, 1)
+
         self.optimizer.step()
 
         return loss.item()
@@ -390,7 +396,8 @@ class AtariAgent:
         Play with the agent
         """
         total_steps = 0
-        total_reward = 0.0
+        total_clipped_reward = 0.0
+        total_unclipped_reward = 0.0
 
         print("=======")
         print(
@@ -403,9 +410,10 @@ class AtariAgent:
         while True:
             action = self._get_action(state)
 
-            state, reward, done, _, _ = self.env.step(action)
+            state, reward, done, _, info = self.env.step(action)
 
-            total_reward += reward
+            total_clipped_reward += reward
+            total_unclipped_reward += info["real_reward"]
             total_steps += 1
 
             if done:
@@ -413,4 +421,6 @@ class AtariAgent:
 
         self.env.close()
 
-        print(f"Total reward: {total_reward} in {total_steps} steps")
+        print(
+            f"Total clipped reward: {total_clipped_reward}, total unclipped reward: {total_unclipped_reward}, total steps: {total_steps}"
+        )
