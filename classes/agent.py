@@ -5,6 +5,7 @@ import re
 import time
 
 import gymnasium as gym
+from gymnasium.wrappers.record_video import RecordVideo
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -391,13 +392,26 @@ class AtariAgent:
 
         self._save_model("last")
 
-    def play(self) -> None:
+    def play(self, is_recording: bool) -> None:
         """
         Play with the agent
+
+        Parameters
+        ----------
+        is_recording : bool
+            Whether to record the game or not
         """
         total_steps = 0
         total_clipped_reward = 0.0
         total_unclipped_reward = 0.0
+
+        if is_recording:
+            self.env = RecordVideo(
+                self.env,
+                os.path.join("videos", self.game_name),
+                disable_logger=True,
+                name_prefix=f"{self.model_name}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}",
+            )
 
         print("=======")
         print(
@@ -407,6 +421,10 @@ class AtariAgent:
         print("=======")
 
         state, _ = self.env.reset()
+
+        if is_recording:
+            self.env.start_video_recorder()
+
         while True:
             action = self._get_action(state)
 

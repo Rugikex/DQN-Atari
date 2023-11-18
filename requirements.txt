@@ -1,5 +1,6 @@
 gymnasium[accept-rom-license, atari]
 matplotlib
+moviepy
 numpy
 opencv-python
 tensorboard

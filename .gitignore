@@ -1,6 +1,7 @@
 __pycache__
 .venv
 
-models/*
 logs
+models/*
+videos
 !models/README.md

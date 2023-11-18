@@ -36,7 +36,7 @@ class AtariWrapper(gym.Wrapper):
         self.previous_state: np.ndarray = None
         self.info = {}
 
-    def reset(self) -> tuple:
+    def reset(self, **kwargs) -> tuple:
         """
         Reset the environment
         Play no-op action between 1 and 30 frames at the beginning of the game
@@ -49,6 +49,8 @@ class AtariWrapper(gym.Wrapper):
         info : dict
             Information about the environment
         """
+        super(AtariWrapper, self).reset(**kwargs)
+
         if self.has_to_reset:
             self.has_to_reset = False
             state, info = self.env.reset()
@@ -85,37 +87,40 @@ class AtariWrapper(gym.Wrapper):
             Stacked frames (4, 84, 84)
         reward : float
             Reward
-        done : bool
-            Whether the episode is done
-        not_use : None
-            Not used
+        terminated : bool
+            Whether the agent reaches the terminal state
+        truncated : bool
+            Whether the truncation condition outside the scope of the MDP is satisfied
         info : dict
             Information about the environment
         """
         sum_reward = 0.0
         next_state = self.previous_state
-        done_episode = False
+        terminated_episode = False
+        has_truncated = False
         for _ in range(self.skip_frames):
             self.previous_state = next_state
-            next_state, reward, done, not_use, info = self.env.step(action)
-            self.has_to_reset = done
+            next_state, reward, terminated, truncated, info = self.env.step(action)
+            self.has_to_reset = terminated
             sum_reward += reward
             if info["lives"] != self.lives:
                 self.lives = info["lives"]
                 if not self.play:
-                    done_episode = True
+                    terminated_episode = True
+            if truncated and not self.play:
+                has_truncated = True
 
         self.stacked_frames.append(next_state, self.previous_state)
         self.previous_state = next_state
 
         self.info = info
-        done = done or done_episode
+        terminated = terminated or terminated_episode or has_truncated
         info["real_reward"] = sum_reward
 
         return (
             self.stacked_frames.get_frames(),
             np.sign(sum_reward).astype(np.float32),
-            done,
-            not_use,
+            terminated,
+            has_truncated,
             info,
         )

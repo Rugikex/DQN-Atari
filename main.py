@@ -1,10 +1,6 @@
 import argparse
-import os
-import sys
 
 import gymnasium as gym
-
-sys.path.append(os.getcwd())
 
 from classes.agent import AtariAgent
 
@@ -30,12 +26,14 @@ def main():
 
     parser.add_argument("--name", type=str, default=None, help="Name of the model")
 
+    parser.add_argument("--record", action="store_true", help="Record the game")
+
     args = parser.parse_args()
 
     if args.repeat < 1:
         raise Exception("The number of repeats must be greater than 0")
 
-    render_mode = "human" if args.action == "play" else "rgb_array"
+    render_mode = "human" if args.action == "play" and not args.record else "rgb_array"
 
     env = gym.make(
         args.game_name,
@@ -59,7 +57,7 @@ def main():
 
     elif args.action == "play":
         agent.load_model(args.name, play=True)
-        agent.play()
+        agent.play(args.record)
 
 
 if __name__ == "__main__":
