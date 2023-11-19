@@ -53,7 +53,7 @@ def main():
 
     elif args.action == "retrain":
         agent.load_model(args.name)
-        agent.train(args.repeat, args.name)
+        agent.train(args.repeat)
 
     elif args.action == "play":
         agent.load_model(args.name, play=True)

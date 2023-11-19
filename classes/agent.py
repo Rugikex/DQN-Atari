@@ -266,7 +266,7 @@ class AtariAgent:
         model_name : str, optional
             Name of the model, by default None
         """
-        if not model_name:
+        if not model_name and not self.model_name:
             list_number_suffix = []
             prefix = "model_v"
             for file in os.listdir(os.path.join("models", self.game_name)):
@@ -280,12 +280,13 @@ class AtariAgent:
             else:
                 model_name = f"{prefix}0"
 
-        self.model_name = model_name
+        if not self.model_name:
+            self.model_name = model_name
 
         writer = SummaryWriter(
             log_dir=os.path.join(
                 "logs",
-                model_name,
+                self.model_name,
                 time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()),
             )
         )
