@@ -166,6 +166,9 @@ class AtariAgent:
                 "hours": self.hours,
                 "time_to_save": self.time_to_save,
                 "best_mean_reward": self.best_mean_reward,
+                "replay_memory": self.replay_memory
+                if suffix == "last"
+                else None,  # Only save the replay memory for the last model to save disk space
             },
             os.path.join("models", self.game_name, f"{self.model_name}_{suffix}.pt"),
         )
@@ -252,8 +255,13 @@ class AtariAgent:
         self.time_to_save = states["time_to_save"]
         self.best_mean_reward = states["best_mean_reward"]
         if not play:
-            self.policy.decaying_epsilon(self.steps)
-            self._fill_replay_memory()
+            reloaded_replay_memory = states.get("replay_memory")
+            if reloaded_replay_memory:
+                self.policy.decaying_epsilon(self.steps + START_UPDATE)
+                self.replay_memory = reloaded_replay_memory
+            else:
+                self.policy.decaying_epsilon(self.steps)
+                self._fill_replay_memory()
 
     def train(self, hours_to_train: int, model_name: str = None) -> None:
         """
@@ -391,6 +399,7 @@ class AtariAgent:
 
         self.env.close()
 
+        print("Saving last model... (this may take a while)")
         self._save_model("last")
 
     def play(self, is_recording: bool) -> None:

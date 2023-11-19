@@ -35,6 +35,22 @@ class ReplayMemory:
     def __len__(self) -> int:
         return self.size
 
+    def __getstate__(self):
+        return {
+            "buffer": self.buffer,
+            "max_size": self.max_size,
+            "index": self.index,
+            "size": self.size,
+            "last_state": self.last_state,
+        }
+
+    def __setstate__(self, state):
+        self.buffer = state["buffer"]
+        self.max_size = state["max_size"]
+        self.index = state["index"]
+        self.size = state["size"]
+        self.last_state = state["last_state"]
+
     def append(self, obj) -> None:
         """
         Append a transition to the replay memory
