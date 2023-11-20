@@ -21,8 +21,7 @@ class AtariWrapper(gym.Wrapper):
     """
 
     def __init__(self, env, skip_frames=4, play=False) -> None:
-        super(AtariWrapper, self).__init__(env)
-        self.env = env
+        super().__init__(env)
         self.skip_frames = skip_frames
         self.play = play
         self.lives = 0
@@ -49,8 +48,6 @@ class AtariWrapper(gym.Wrapper):
         info : dict
             Information about the environment
         """
-        super(AtariWrapper, self).reset(**kwargs)
-
         if self.has_to_reset:
             self.has_to_reset = False
             state, info = self.env.reset()
