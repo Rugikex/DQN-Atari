@@ -422,6 +422,7 @@ class AtariAgent:
                 disable_logger=True,
                 name_prefix=f"{self.model_name}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}",
             )
+            self.env.metadata["render_fps"] = 30
 
         print("=======")
         print(
