@@ -27,6 +27,11 @@ def main():
     parser.add_argument("--name", type=str, default=None, help="Name of the model")
 
     parser.add_argument("--record", action="store_true", help="Record the game")
+    parser.add_argument(
+        "--memory_safe",
+        action="store_true",
+        help="Memory safe mode (don't save replay memory)",
+    )
 
     args = parser.parse_args()
 
@@ -46,7 +51,9 @@ def main():
         render_mode=render_mode,
     )
 
-    agent = AtariAgent(args.game_name, env, play=args.action == "play")
+    agent = AtariAgent(
+        args.game_name, env, is_memory_safe=args.memory_safe, play=args.action == "play"
+    )
 
     if args.action == "train":
         agent.train(args.repeat, args.name)

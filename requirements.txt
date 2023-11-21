@@ -1,4 +1,5 @@
 gymnasium[accept-rom-license, atari]
+h5py
 matplotlib
 moviepy
 numpy

@@ -26,7 +26,7 @@ class ReplayMemory:
     """
 
     def __init__(self, max_size) -> None:
-        self.buffer = [None] * max_size
+        self.buffer = [([], 0, 0, False)] * max_size
         self.max_size = max_size
         self.index = 0
         self.size = 0
@@ -37,7 +37,6 @@ class ReplayMemory:
 
     def __getstate__(self):
         return {
-            "buffer": self.buffer,
             "max_size": self.max_size,
             "index": self.index,
             "size": self.size,
@@ -45,7 +44,7 @@ class ReplayMemory:
         }
 
     def __setstate__(self, state):
-        self.buffer = state["buffer"]
+        self.buffer = [([], 0, 0, False)] * state["max_size"]
         self.max_size = state["max_size"]
         self.index = state["index"]
         self.size = state["size"]
@@ -55,7 +54,7 @@ class ReplayMemory:
         """
         Append a transition to the replay memory
         Object format: (state, action, reward, next_state, done)
-        The object is modified to (state, action, reward, reward, done) because in my
+        The object is modified to (state, action, reward, done) because in my
         implementation, the skip frames and the number of frames to stack are the same
         so the next state is the state of the next transition.
         With this modification, the replay memory is more memory efficient.
