@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import gc
 
 from classes.dqn import DeepQNetwork
 from classes.env_wrapper import AtariWrapper
@@ -21,18 +22,11 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPSILON_FINAL_STEP = 1_000_000
 GAMMA = 0.99
 MINIBATCH_SIZE = 32
-SPLIT_SIZE = 200_000
 REPLAY_MEMORY_MAXLEN = 1_000_000
-SAVE_REPLAY_MEMORY = True
 SECOND_PER_HOUR = 3_600
 START_UPDATE = 50_000
 STEPS_PER_EPISODE = 2_000
 UPDATE_TARGET_NETWORK = 10_000
-
-if REPLAY_MEMORY_MAXLEN % SPLIT_SIZE != 0:
-    raise Exception(
-        "REPLAY_MEMORY_MAXLEN must be a multiple of SPLIT_SIZE to save the replay memory"
-    )
 
 print(f"Using {DEVICE} device")
 
@@ -57,7 +51,6 @@ class AtariAgent:
         self,
         game_name: str,
         env: gym.Env,
-        is_memory_safe: bool = False,
         play: bool = False,
     ) -> None:
         self.game_name = game_name
@@ -75,7 +68,6 @@ class AtariAgent:
             self.policy = EpsilonGreedyPolicy(
                 1.0, 0.1, START_UPDATE, EPSILON_FINAL_STEP
             )
-        self.is_memory_safe = is_memory_safe
         self.replay_memory = ReplayMemory(REPLAY_MEMORY_MAXLEN)
         self.model_name = None
         self.episodes = 0
@@ -176,40 +168,6 @@ class AtariAgent:
         if not suffix:
             suffix = self.hours
 
-        if SAVE_REPLAY_MEMORY and not self.is_memory_safe and suffix == "last":
-            # Save the replay memory for the last model to retrain it later
-            for i in tqdm(
-                range(self.replay_memory.max_size // SPLIT_SIZE),
-                desc="Saving replay memory",
-            ):
-                start_idx = i * SPLIT_SIZE
-                end_idx = (i + 1) * SPLIT_SIZE
-                with h5py.File(
-                    os.path.join(
-                        "models",
-                        self.game_name,
-                        f"replay_memory_{self.model_name}_{i}.h5",
-                    ),
-                    "w",
-                ) as hf:
-                    for j, (state, action, reward, done) in tqdm(
-                        enumerate(self.replay_memory.buffer[start_idx:end_idx]),
-                        desc=f"Processing split, part {i + 1}",
-                        total=SPLIT_SIZE,
-                        leave=False,
-                    ):
-                        grp = hf.create_group(f"transition_{j}")
-                        grp.create_dataset(
-                            "state",
-                            data=state,
-                            dtype=np.uint8,
-                            compression="gzip",
-                            compression_opts=9,
-                        )
-                        grp.attrs["action"] = action
-                        grp.attrs["reward"] = reward
-                        grp.attrs["done"] = done
-
         torch.save(
             {
                 "state_dict": self.online_network.state_dict(),
@@ -220,9 +178,6 @@ class AtariAgent:
                 "hours": self.hours,
                 "time_to_save": self.time_to_save,
                 "best_mean_reward": self.best_mean_reward,
-                "replay_memory": self.replay_memory
-                if SAVE_REPLAY_MEMORY and not self.is_memory_safe and suffix == "last"
-                else None,  # Only save the replay memory for the last model to save disk space
             },
             os.path.join("models", self.game_name, f"{self.model_name}_{suffix}.pt"),
             pickle_protocol=4,
@@ -312,51 +267,8 @@ class AtariAgent:
         self.time_to_save = states["time_to_save"]
         self.best_mean_reward = states["best_mean_reward"]
         if not play:
-            reloaded_replay_memory = states.get("replay_memory")
-            if reloaded_replay_memory and os.path.exists(
-                os.path.join(
-                    "models", self.game_name, f"replay_memory_{self.model_name}_0.h5"
-                )
-            ):
-                self.policy.decaying_epsilon(self.steps + START_UPDATE)
-                self.replay_memory = reloaded_replay_memory
-                index = 0
-                for i in tqdm(
-                    range(self.replay_memory.max_size // SPLIT_SIZE),
-                    desc="Loading replay memory",
-                ):
-                    start_idx = i * SPLIT_SIZE
-                    end_idx = (i + 1) * SPLIT_SIZE
-                    with h5py.File(
-                        os.path.join(
-                            "models",
-                            self.game_name,
-                            f"replay_memory_{self.model_name}_{i}.h5",
-                        ),
-                        "r",
-                    ) as hf:
-                        for j in tqdm(
-                            range(end_idx - start_idx),
-                            desc=f"Processing split, part {i + 1}",
-                            total=SPLIT_SIZE,
-                            leave=False,
-                        ):
-                            grp = hf[f"transition_{j}"]
-                            state = grp["state"][:]
-                            action = grp.attrs["action"]
-                            reward = grp.attrs["reward"]
-                            done = grp.attrs["done"]
-                            self.replay_memory.buffer[index] = (
-                                state,
-                                action,
-                                reward,
-                                done,
-                            )
-                            index += 1
-
-            else:
-                self.policy.decaying_epsilon(self.steps)
-                self._fill_replay_memory()
+            self.policy.decaying_epsilon(self.steps)
+            self._fill_replay_memory()
 
     def train(self, hours_to_train: int, model_name: str = None) -> None:
         """
