@@ -1,9 +1,0 @@
-gymnasium[accept-rom-license, atari]
-h5py
-matplotlib
-moviepy
-numpy
-opencv-python
-tensorboard
-torch
-tqdm

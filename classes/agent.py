@@ -41,8 +41,6 @@ class AtariAgent:
         Name of the game
     env : gym.Env
         Environment
-    is_memory_safe : bool, optional
-        Memory safe mode (don't save replay memory), by default False
     play : bool, optional
         Play mode, by default False
     """
@@ -79,7 +77,7 @@ class AtariAgent:
     def _fill_replay_memory(self) -> None:
         """
         Fill the replay memory with random actions
-        Use for retraining if the replay memory is not saved
+        Use for retraining
         """
         state, _ = self.env.reset()
         memory_state = state
@@ -317,7 +315,8 @@ class AtariAgent:
         reward_last_100_episodes = deque(maxlen=100)
         length_last_100_episodes = deque(maxlen=100)
 
-        max_seconds = hours_to_train * SECOND_PER_HOUR
+        # - self.time_to_save because we trained for self.time_to_save seconds more than the last hour saved
+        max_seconds = hours_to_train * SECOND_PER_HOUR - self.time_to_save
         progress_bar = tqdm(total=max_seconds, desc="Training", unit="s")
         start_time = time.time()
         while time_spent < max_seconds:

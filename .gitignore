@@ -1,5 +1,6 @@
 __pycache__
 .venv
+poetry.lock
 
 logs
 models/*

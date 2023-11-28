@@ -7,19 +7,23 @@ The goal of this project is to reproduce the implementation of the article and t
 
 ## Installation
 
-The code is written in Python 3.11.5 and uses PyTorch 2.1.0 avec CUDA 12.1. The dependencies are listed in the file `requirements.txt`. To install them, run the following command:
+# dependencies in pyproject.toml
+The code is written in Python 3.11.5 and uses PyTorch 2.1.0 avec CUDA 12.1. The dependencies are listed in the file `pyproject.toml`.
+
+In first, create a virtual environment and install PyTorch with the following command:
 
 ```bash
-pip install -r requirements.txt
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-If torch did not recognize your CUDA version, you can force the installation of the correct version with the following command:
-
-```bash
-pip install --upgrade --force-reinstall torch --index-url https://download.pytorch.org/whl/cu121
-```
-
+You can change the CUDA version in the URL.\
 For more information, please refer to the [PyTorch website](https://pytorch.org/get-started/locally/).
+
+Then, install poetry to manage the dependencies:
+
+```bash
+poetry update
+```
 
 ## Usage
 
