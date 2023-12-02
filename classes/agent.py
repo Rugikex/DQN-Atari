@@ -6,12 +6,10 @@ import time
 
 import gymnasium as gym
 from gymnasium.wrappers.record_video import RecordVideo
-import h5py
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-import gc
 
 from classes.dqn import DeepQNetwork
 from classes.env_wrapper import AtariWrapper
@@ -19,7 +17,8 @@ from classes.policy import EpsilonGreedyPolicy
 from classes.replay_memory import ReplayMemory
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-EPSILON_FINAL_STEP = 1_000_000
+EPSILON_FIRST_STEP = 1_000_000
+EPSILON_SECOND_STEP = 10_000_000
 GAMMA = 0.99
 MINIBATCH_SIZE = 32
 REPLAY_MEMORY_MAXLEN = 1_000_000
@@ -61,10 +60,11 @@ class AtariAgent:
             self.online_network.parameters(), lr=0.000_25, alpha=0.95, eps=0.01
         )
         if play:
-            self.policy = EpsilonGreedyPolicy(0.05, 0.05, 0, 0)
+            self.policy = EpsilonGreedyPolicy([0.05], [0])
         else:
             self.policy = EpsilonGreedyPolicy(
-                1.0, 0.1, START_UPDATE, EPSILON_FINAL_STEP
+                [1.0, 0.1, 0.01],
+                [START_UPDATE, EPSILON_FIRST_STEP, EPSILON_SECOND_STEP],
             )
         self.replay_memory = ReplayMemory(REPLAY_MEMORY_MAXLEN)
         self.model_name = None
@@ -233,10 +233,6 @@ class AtariAgent:
 
         # Optimize the model
         loss.backward()
-
-        # Gradient clipping
-        for param in self.online_network.parameters():
-            param.grad.data.clamp_(-1, 1)
 
         self.optimizer.step()
 
