@@ -53,12 +53,14 @@ class AtariWrapper(gym.Wrapper):
             state, info = self.env.reset()
             self.lives = info["lives"]
             # Play no-op action between 1 and 30 frames at the beginning of the game
-            for _ in range(random.randint(1, 30)):
-                state, _, done, _, info = self.env.step(self.no_op_action)
-                if info["lives"] != self.lives:
-                    done = True
-                if done:
-                    state, info = self.env.reset()
+            # for play only
+            if self.play:
+                for _ in range(random.randint(1, 30)):
+                    state, _, done, _, info = self.env.step(self.no_op_action)
+                    if info["lives"] != self.lives:
+                        done = True
+                    if done:
+                        state, info = self.env.reset()
 
             self.stacked_frames.reset(state)
             self.previous_state = state

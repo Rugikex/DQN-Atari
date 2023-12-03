@@ -447,6 +447,11 @@ class AtariAgent:
             total_unclipped_reward += info["real_reward"]
             total_steps += 1
 
+            # Stop the recording after 5_000 steps
+            # This is to avoid looping forever
+            if is_recording and total_steps == 5_000:
+                break
+
             if done:
                 break
 
