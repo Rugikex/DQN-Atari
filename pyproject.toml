@@ -6,12 +6,14 @@ authors = ["Tanguy Malandain"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 black = "^23.11.0"
+torch = "^2.1.1"
+torchaudio = "^2.1.1"
+torchvision = "^0.16.1"
 
 [tool.poetry.group.dev.dependencies]
 gymnasium = {extras = ["accept-rom-license", "atari"], version = "^0.29.1"}
-h5py = "^3.10.0"
 matplotlib = "^3.8.2"
 moviepy = "^1.0.3"
 numpy = "^1.26.2"
