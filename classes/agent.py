@@ -21,6 +21,7 @@ EPSILON_FIRST_STEP = 1_000_000
 EPSILON_SECOND_STEP = 10_000_000
 GAMMA = 0.99
 MINIBATCH_SIZE = 32
+PLAY_TRY = 5
 REPLAY_MEMORY_MAXLEN = 1_000_000
 SECOND_PER_HOUR = 3_600
 START_UPDATE = 50_000
@@ -413,10 +414,6 @@ class AtariAgent:
         is_recording : bool
             Whether to record the game or not
         """
-        total_steps = 0
-        total_clipped_reward = 0.0
-        total_unclipped_reward = 0.0
-
         if is_recording:
             self.env = RecordVideo(
                 self.env,
@@ -433,30 +430,34 @@ class AtariAgent:
         )
         print("=======")
 
-        state, _ = self.env.reset()
+        for i in range(PLAY_TRY):
+            total_steps = 0
+            total_clipped_reward = 0.0
+            total_unclipped_reward = 0.0
+            state, info = self.env.reset()
 
-        if is_recording:
-            self.env.start_video_recorder()
+            if is_recording:
+                self.env.start_video_recorder()
 
-        while True:
-            action = self._get_action(state)
+            while True:
+                action = self._get_action(state)
 
-            state, reward, done, _, info = self.env.step(action)
+                state, reward, done, _, info = self.env.step(action)
 
-            total_clipped_reward += reward
-            total_unclipped_reward += info["real_reward"]
-            total_steps += 1
+                total_clipped_reward += reward
+                total_unclipped_reward += info["real_reward"]
+                total_steps += 1
 
-            # Stop the recording after 5_000 steps
-            # This is to avoid looping forever
-            if is_recording and total_steps == 5_000:
-                break
+                # Stop the recording after 5_000 steps
+                # This is to avoid looping forever
+                if is_recording and total_steps == 5_000:
+                    break
 
-            if done:
-                break
+                if done:
+                    break
+
+            print(
+                f"Episode {i}: Total clipped reward: {total_clipped_reward}, Total unclipped reward: {total_unclipped_reward}, Total steps: {total_steps}"
+            )
 
         self.env.close()
-
-        print(
-            f"Total clipped reward: {total_clipped_reward}, total unclipped reward: {total_unclipped_reward}, total steps: {total_steps}"
-        )

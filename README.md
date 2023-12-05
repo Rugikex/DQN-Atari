@@ -31,8 +31,18 @@ For more information, please refer to the [PyTorch website](https://pytorch.org/
 To train the model on the Atari game Breakout, run the following command:
 
 ```bash
-python main.py play Breakout-v4
+python main.py play Breakout-v4 --name model_name
 ```
+
+When the model is trained, the model is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth` where `NAME` is the name given in the arguments and `SUFFIX` is the number of hours of training or best or last.
+
+To play with the model, run the following command:
+
+```bash
+python main.py play Breakout-v4 --name model_name
+```
+
+By default, the model choosen is the last model trained, but you can specify the suffix of the model if wanted.
 
 For more information on the arguments, run the following command:
 
@@ -74,15 +84,13 @@ It is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth`
 
 ## Results
 
-The model presented below is trained for 29 hours, 41285 episodes and 6887667 steps.
+The model presented below is trained on the game Breakout for 50 hours, 54853 episodes and 11709224 steps.
 
-In this game, the agent didn't finish the game but has a real score of 378 points and a clipped score of 96 points, in 1917 steps.
+In this level, the agent didn't finish the game but has a real score of 420 points and a clipped score of 105 points, in 2945 steps.
 
 ![Game_gif](content/game.gif)
 
-
-Here are the graphs of the training process, there is 3 colors because the model was trained 3 times, the first time for 8 hours, the second time for 9 hours and the last time for 12 hours.
-
+Here are the graphs of the training process, there is 5 colors because the model was trained 5 times.
 
 **Epsilon at the end of the episode**<br>
 x-axis: episodes, y-axis: epsilon
@@ -116,11 +124,13 @@ Here are some faillures and sucesses cases of the model.
 
 Saving the replay memory for retraining isn't a fiability solution, because the replay memory is too big and it takes more than 3 hours for saving it completely.
 
-The agent didn't finish the game.
+The agent don't finish the game.
+
+The agent isn't stable, sometimes it is playing well and sometimes it is playing badly.
 
 ### Sucesses
 
-To retrains the model, instead of saving the replay memory, the replay memory is initialise with the transitions of the last model until the replay memory size reaches the starting size to train the model. It isn't the same transitions but it is a good approximation.
+To retrains the model, instead of saving the replay memory, the replay memory is initialised with the transitions of the last model until the replay memory size reaches the starting size to train the model. It isn't the same transitions but it is a good approximation.
 
 The Huber loss seems to be a good choice, the loss is decreasing and the model is learning.
 
