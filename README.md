@@ -116,19 +116,19 @@ x-axis: episodes, y-axis: reward of the episode
 x-axis: 100 last episodes, y-axis: reward of the episode
 ![Graph_rewards_last_100_episodes](content/Rewards_Last_100_episodes.svg)
 
-## Faillures and sucesses cases
+## Failures and successes cases
 
-Here are some faillures and sucesses cases of the model.
+Here are some failures and successes cases of the model.
 
-### Faillures
+### Failures
 
 Saving the replay memory for retraining isn't a fiability solution, because the replay memory is too big and it takes more than 3 hours for saving it completely.
 
-The agent don't finish the game.
+The agent doesn't finish the game.
 
 The agent isn't stable, sometimes it is playing well and sometimes it is playing badly.
 
-### Sucesses
+### Successes
 
 To retrains the model, instead of saving the replay memory, the replay memory is initialised with the transitions of the last model until the replay memory size reaches the starting size to train the model. It isn't the same transitions but it is a good approximation.
 
