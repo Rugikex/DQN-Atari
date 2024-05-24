@@ -19,7 +19,7 @@ def convert_mp4_to_gif(mp4_file: str, gif_file: str, fps: int = 30):
     if not os.path.exists(mp4_file):
         raise FileNotFoundError(f"File does not exist at path {mp4_file}")
 
-    video = VideoFileClip(mp4_file)
+    video: VideoFileClip = VideoFileClip(mp4_file)
 
     if not os.path.exists(os.path.dirname(gif_file)):
         os.makedirs(os.path.dirname(gif_file))

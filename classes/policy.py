@@ -43,13 +43,13 @@ class EpsilonGreedyPolicy:
         if len(epsilon_values) == 0:
             raise ValueError("Epsilon values should not be empty")
 
-        self._epsilon = epsilon_values[0]
-        self._index = 0
-        self._epsilon_values = epsilon_values
-        self._steps_to_epsilon_values = steps_to_epsilon_values
-        self._current_decay = 0
-        self._steps = 0
-        self._decay_state = (
+        self._epsilon: float = epsilon_values[0]
+        self._index: int = 0
+        self._epsilon_values: List[float] = epsilon_values
+        self._steps_to_epsilon_values: List[int] = steps_to_epsilon_values
+        self._current_decay: int = 0
+        self._steps: int = 0
+        self._decay_state: DecayState = (
             DecayState.DECAY_NOT_STARTED
             if len(epsilon_values) > 1
             else DecayState.DECAY_ENDED
@@ -78,7 +78,7 @@ class EpsilonGreedyPolicy:
         steps : int
             Number of steps already done
         """
-        steps_to_decay = steps - self._steps_to_epsilon_values[0]
+        steps_to_decay: int = steps - self._steps_to_epsilon_values[0]
         if (
             steps_to_decay
             >= self._steps_to_epsilon_values[len(self._steps_to_epsilon_values) - 1]
@@ -91,7 +91,8 @@ class EpsilonGreedyPolicy:
             for _ in tqdm(range(steps_to_decay), desc="Decaying epsilon"):
                 self.get_epsilon()
 
-    def get_current_epsilon(self) -> float:
+    @property
+    def current_epsilon(self) -> float:
         """
         Get current epsilon value
         Use for logging

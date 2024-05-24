@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 
@@ -15,10 +17,12 @@ class DeepQNetwork(nn.Module):
         default: (4, 84, 84)
     """
 
-    def __init__(self, num_actions: int, input_shape: tuple = (4, 84, 84)) -> None:
+    def __init__(
+        self, num_actions: int, input_shape: Tuple[int, int, int] = (4, 84, 84)
+    ) -> None:
         super().__init__()
 
-        self.cnn = nn.Sequential(
+        self.cnn: nn.Sequential = nn.Sequential(
             nn.Conv2d(4, 32, kernel_size=8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
@@ -27,9 +31,11 @@ class DeepQNetwork(nn.Module):
             nn.ReLU(),
         )
 
-        self.fc1 = nn.Linear(self.cnn(torch.zeros(1, *input_shape)).numel(), 512)
-        self.activation = nn.ReLU()
-        self.fc2 = nn.Linear(512, num_actions)
+        self.fc1: nn.Linear = nn.Linear(
+            self.cnn(torch.zeros(1, *input_shape)).numel(), 512
+        )
+        self.activation: nn.ReLU = nn.ReLU()
+        self.fc2: nn.Linear = nn.Linear(512, num_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

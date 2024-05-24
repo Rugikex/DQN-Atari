@@ -3,11 +3,14 @@ import os
 import random
 import re
 import time
+from typing import Deque, Dict, List, Optional, Tuple
 
 import gymnasium as gym
 from gymnasium.wrappers.record_video import RecordVideo
 import numpy as np
+from numpy.typing import NDArray
 import torch
+import torch.types
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -16,17 +19,17 @@ from classes.env_wrapper import AtariWrapper
 from classes.policy import EpsilonGreedyPolicy
 from classes.replay_memory import ReplayMemory
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-EPSILON_FIRST_STEP = 1_000_000
-EPSILON_SECOND_STEP = 10_000_000
-GAMMA = 0.99
-MINIBATCH_SIZE = 32
-PLAY_TRY = 5
-REPLAY_MEMORY_MAXLEN = 1_000_000
-SECOND_PER_HOUR = 3_600
-START_UPDATE = 50_000
-STEPS_PER_EPISODE = 2_000
-UPDATE_TARGET_NETWORK = 10_000
+DEVICE: str = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+EPSILON_FIRST_STEP: int = 1_000_000
+EPSILON_SECOND_STEP: int = 10_000_000
+GAMMA: float = 0.99
+MINIBATCH_SIZE: int = 32
+PLAY_TRY: int = 5
+REPLAY_MEMORY_MAXLEN: int = 1_000_000
+SECOND_PER_HOUR: int = 3_600
+START_UPDATE: int = 50_000
+STEPS_PER_EPISODE: int = 2_000
+UPDATE_TARGET_NETWORK: int = 10_000
 
 print(f"Using {DEVICE} device")
 
@@ -52,14 +55,15 @@ class AtariAgent:
         play: bool = False,
     ) -> None:
         self.game_name = game_name
-        self.env = AtariWrapper(env, play=play)
-        self.online_network = DeepQNetwork(env.action_space.n).to(DEVICE)
-        self.target_network = DeepQNetwork(env.action_space.n).to(DEVICE)
+        self.env: gym.Env = AtariWrapper(env, play=play)
+        self.online_network: DeepQNetwork = DeepQNetwork(env.action_space.n).to(DEVICE)
+        self.target_network: DeepQNetwork = DeepQNetwork(env.action_space.n).to(DEVICE)
         self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval()  # Target network is not trained
-        self.optimizer = torch.optim.RMSprop(
+        self.optimizer: torch.optim.RMSprop = torch.optim.RMSprop(
             self.online_network.parameters(), lr=0.000_25, alpha=0.95, eps=0.01
         )
+        self.policy: EpsilonGreedyPolicy
         if play:
             self.policy = EpsilonGreedyPolicy([0.05], [0])
         else:
@@ -67,24 +71,27 @@ class AtariAgent:
                 [1.0, 0.1, 0.01],
                 [START_UPDATE, EPSILON_FIRST_STEP, EPSILON_SECOND_STEP],
             )
-        self.replay_memory = ReplayMemory(REPLAY_MEMORY_MAXLEN)
-        self.model_name = None
-        self.episodes = 0
-        self.steps = 0
-        self.hours = 0
-        self.time_to_save = 0
-        self.best_mean_reward = 0.0
+        self.replay_memory: ReplayMemory = ReplayMemory(REPLAY_MEMORY_MAXLEN)
+        self.model_name: str = ""
+        self.episodes: int = 0
+        self.steps: int = 0
+        self.hours: int = 0
+        self.time_to_save: int = 0
+        self.best_mean_reward: float = 0.0
 
     def _fill_replay_memory(self) -> None:
         """
         Fill the replay memory with random actions
         Use for retraining
         """
+        state: NDArray[np.uint8]
         state, _ = self.env.reset()
-        memory_state = state
+        memory_state: NDArray[np.uint8] = state
 
         for _ in tqdm(range(START_UPDATE), desc="Filling replay memory"):
-            action = self._get_action(state)
+            action: np.uint8 = self._get_action(state)
+            reward: np.int8
+            done: bool
             state, reward, done, _, _ = self.env.step(action)
 
             # Store the transition in the replay memory
@@ -104,7 +111,9 @@ class AtariAgent:
         str
             Path of the model
         """
-        model_path = os.path.join("models", self.game_name, f"{self.model_name}.pt")
+        model_path: str = os.path.join(
+            "models", self.game_name, f"{self.model_name}.pt"
+        )
         if not os.path.exists(model_path):
             # If the model doesn't exist, maybe the user want to load the last model
             model_path = os.path.join(
@@ -114,27 +123,29 @@ class AtariAgent:
                 raise Exception("Model not found")
 
         # Get the name of the model without the suffix
-        match = re.match(r"^(.*?)(_[0-9]+|_last|_best)?$", self.model_name)
+        match: Optional[re.Match] = re.match(
+            r"^(.*?)(_[0-9]+|_last|_best)?$", self.model_name
+        )
         if match:
             self.model_name = match.group(1)
 
         return model_path
 
-    def _get_action(self, state: np.ndarray) -> np.int64:
+    def _get_action(self, state: NDArray[np.uint8]) -> np.uint8:
         """
         Get the action to take
 
         Parameters
         ----------
-        state: np.ndarray
+        state: NDArray[np.uint8]
             Current state
 
         Returns
         -------
-        np.int64
+        np.uint8
             Action to take
         """
-        action: np.int64
+        action: np.uint8
         if random.uniform(0, 1) < self.policy.get_epsilon():
             # Exploration: choose a random action
             action = self.env.action_space.sample()
@@ -151,7 +162,7 @@ class AtariAgent:
 
         return action
 
-    def _save_model(self, suffix: str = None) -> None:
+    def _save_model(self, suffix: str = "") -> None:
         """
         Save the model
 
@@ -164,8 +175,8 @@ class AtariAgent:
         if not os.path.exists(os.path.join("models", self.game_name)):
             os.makedirs(os.path.join("models", self.game_name))
 
-        if not suffix:
-            suffix = self.hours
+        if suffix == "":
+            suffix = str(self.hours)
 
         torch.save(
             {
@@ -184,7 +195,13 @@ class AtariAgent:
 
     def _update_q_network(
         self,
-        minibatch: tuple,
+        minibatch: Tuple[
+            NDArray[np.uint8],
+            NDArray[np.uint8],
+            NDArray[np.int8],
+            NDArray[np.uint8],
+            NDArray[np.bool_],
+        ],
     ) -> float:
         """
         Update the Q-network using the minibatch
@@ -200,35 +217,53 @@ class AtariAgent:
             Loss value
         """
         # Unpack the minibatch
+        states: NDArray[np.uint8]
+        actions: NDArray[np.uint8]
+        rewards: NDArray[np.int8]
+        next_states: NDArray[np.uint8]
+        dones: NDArray[np.bool_]
         states, actions, rewards, next_states, dones = minibatch
 
         # Convert data to PyTorch tensors
-        states = torch.as_tensor(states, dtype=torch.float32).to(DEVICE)
-        actions = torch.as_tensor(actions, dtype=torch.int64).to(DEVICE)
-        rewards = torch.as_tensor(rewards, dtype=torch.int8).to(DEVICE)
-        next_states = torch.as_tensor(next_states, dtype=torch.float32).to(DEVICE)
-        not_dones = torch.logical_not(torch.as_tensor(dones, dtype=torch.bool)).to(
+        torch_states: torch.Tensor = torch.as_tensor(states, dtype=torch.float32).to(
             DEVICE
         )
+        torch_actions: torch.Tensor = torch.as_tensor(actions, dtype=torch.int64).to(
+            DEVICE
+        )
+        torch_rewards: torch.Tensor = torch.as_tensor(rewards, dtype=torch.int8).to(
+            DEVICE
+        )
+        torch_next_states: torch.Tensor = torch.as_tensor(
+            next_states, dtype=torch.float32
+        ).to(DEVICE)
+        torch_not_dones: torch.Tensor = torch.logical_not(
+            torch.as_tensor(dones, dtype=torch.bool)
+        ).to(DEVICE)
 
         # Compute Q-values for the current state
         self.online_network.train()
         self.optimizer.zero_grad()
 
-        q_values = self.online_network(states)
-        q_values = q_values.gather(1, actions.unsqueeze(1))
+        q_values: torch.Tensor = self.online_network(torch_states)
+        q_values = q_values.gather(1, torch_actions.unsqueeze(1))
 
         # Compute the target Q-values using the target network
         with torch.no_grad():
-            next_q_values = self.target_network(next_states)
+            next_q_values = self.target_network(torch_next_states)
+        max_next_q_values: torch.Tensor
         max_next_q_values, _ = next_q_values.max(1)
-        target_q_values = rewards + not_dones * GAMMA * max_next_q_values
+        target_q_values: torch.Tensor = (
+            torch_rewards + torch_not_dones * GAMMA * max_next_q_values
+        )
 
         # Compute the loss
         # There is a paragraph in the paper about the optimization of the loss function
         # to clip the error between -1 and 1 but the explanation is not very clear
         # so I use the Huber loss instead with delta=1
-        loss = torch.nn.HuberLoss()(q_values, target_q_values.unsqueeze(1))
+        loss: torch.nn.HuberLoss = torch.nn.HuberLoss()(
+            q_values, target_q_values.unsqueeze(1)
+        )
 
         # Optimize the model
         loss.backward()
@@ -249,8 +284,8 @@ class AtariAgent:
             Play mode, by default False
         """
         self.model_name = model_name
-        model_path = self._get_model_path()
-        states = torch.load(model_path)
+        model_path: str = self._get_model_path()
+        states: Dict = torch.load(model_path)
         self.online_network.load_state_dict(states["state_dict"])
         self.target_network.load_state_dict(states["target_state_dict"])
         self.optimizer.load_state_dict(states["optimizer"])
@@ -275,23 +310,23 @@ class AtariAgent:
             Name of the model, by default None
         """
         if not model_name and not self.model_name:
-            list_number_suffix = []
-            prefix = "model_v"
+            list_number_suffix: List[int] = []
+            prefix: str = "model_v"
             for file in os.listdir(os.path.join("models", self.game_name)):
                 # We find model with prefix with regex
-                match = re.match(f"^({prefix})([0-9]+)$", file)
+                match: Optional[re.Match] = re.match(f"^({prefix})([0-9]+)$", file)
                 if match:
                     list_number_suffix.append(int(match.group(2)))
 
-            if list_number_suffix:
+            if len(list_number_suffix) > 0:
                 model_name = f"{prefix}{max(list_number_suffix) + 1}"
             else:
                 model_name = f"{prefix}0"
 
-        if not self.model_name:
+        if self.model_name == "":
             self.model_name = model_name
 
-        writer = SummaryWriter(
+        writer: SummaryWriter = SummaryWriter(
             log_dir=os.path.join(
                 "logs",
                 self.model_name,
@@ -306,24 +341,26 @@ class AtariAgent:
         )
         print("=======")
 
-        time_spent = 0
-        reward_last_100_episodes = deque(maxlen=100)
-        length_last_100_episodes = deque(maxlen=100)
+        time_spent: int = 0
+        reward_last_100_episodes: Deque[float] = deque(maxlen=100)
+        length_last_100_episodes: Deque[int] = deque(maxlen=100)
 
         # - self.time_to_save because we trained for self.time_to_save seconds more than the last hour saved
-        max_seconds = hours_to_train * SECOND_PER_HOUR - self.time_to_save
-        progress_bar = tqdm(total=max_seconds, desc="Training", unit="s")
-        start_time = time.time()
+        max_seconds: int = hours_to_train * SECOND_PER_HOUR - self.time_to_save
+        progress_bar: tqdm = tqdm(total=max_seconds, desc="Training", unit="s")
+        start_time: float = time.time()
         while time_spent < max_seconds:
+            state: NDArray[np.uint8]
             state, _ = self.env.reset()
-            memory_state = state
+            memory_state: NDArray[np.uint8] = state
 
-            episode_reward = 0.0
-            episode_step = 0
-            done = False
+            episode_reward: float = 0.0
+            episode_step: int = 0
+            done: bool = False
 
             while episode_step < STEPS_PER_EPISODE:
-                action = self._get_action(memory_state)
+                action: np.uint8 = self._get_action(memory_state)
+                reward: np.int8
                 state, reward, done, _, _ = self.env.step(action)
 
                 # Store the transition in the replay memory
@@ -332,8 +369,14 @@ class AtariAgent:
 
                 if self.steps % 4 == 0 and len(self.replay_memory) >= START_UPDATE:
                     # Sample a minibatch from the replay memory
-                    minibatch = self.replay_memory.sample(MINIBATCH_SIZE)
-                    loss = self._update_q_network(minibatch)
+                    minibatch: Tuple[
+                        NDArray[np.uint8],
+                        NDArray[np.uint8],
+                        NDArray[np.int8],
+                        NDArray[np.uint8],
+                        NDArray[np.bool_],
+                    ] = self.replay_memory.sample(MINIBATCH_SIZE)
+                    loss: float = self._update_q_network(minibatch)
                     writer.add_scalar("Loss", loss, self.steps)
 
                 # Update the target network every C steps
@@ -357,7 +400,7 @@ class AtariAgent:
 
             writer.add_scalar(
                 "Epsilon at the end of the episode",
-                self.policy.get_current_epsilon(),
+                self.policy.current_epsilon,
                 self.episodes,
             )
             writer.add_scalar("Rewards/Episode", episode_reward, self.episodes)
@@ -374,8 +417,8 @@ class AtariAgent:
             )
 
             self.episodes += 1
-            time_spent = int(time.time() - start_time)
-            increment = time_spent - progress_bar.n
+            time_spent: int = int(time.time() - start_time)
+            increment: int = time_spent - progress_bar.n
             progress_bar.update(increment)
             self.time_to_save += increment
 
@@ -429,17 +472,21 @@ class AtariAgent:
         print("=======")
 
         for i in range(PLAY_TRY):
-            total_steps = 0
-            total_clipped_reward = 0.0
-            total_unclipped_reward = 0.0
+            total_steps: int = 0
+            total_clipped_reward: float = 0.0
+            total_unclipped_reward: float = 0.0
+            state: NDArray[np.uint8]
+            info: Dict
             state, info = self.env.reset()
 
             if is_recording:
                 self.env.start_video_recorder()
 
             while True:
-                action = self._get_action(state)
+                action: np.uint8 = self._get_action(state)
 
+                reward: np.int8
+                done: bool
                 state, reward, done, _, info = self.env.step(action)
 
                 total_clipped_reward += reward

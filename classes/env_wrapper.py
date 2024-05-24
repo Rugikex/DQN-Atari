@@ -1,7 +1,9 @@
 import random
+from typing import Dict, Tuple
 
 import gymnasium as gym
 import numpy as np
+from numpy.typing import NDArray
 
 from classes.stacked_frames import StackedFrames
 
@@ -21,23 +23,29 @@ class AtariWrapper(gym.Wrapper):
     """
 
     def __init__(
-        self, env, skip_frames=4, play=False, resolution_shape=(84, 84)
+        self,
+        env: gym.Env,
+        skip_frames: int = 4,
+        play: bool = False,
+        resolution_shape: Tuple[int, int] = (84, 84),
     ) -> None:
         super().__init__(env)
-        self.skip_frames = skip_frames
-        self.play = play
-        self.lives = 0
-        self.has_to_reset = True
-        self.no_op_action = [
+        self.skip_frames: int = skip_frames
+        self.play: bool = play
+        self.lives: int = 0
+        self.has_to_reset: bool = True
+        self.no_op_action: int = [
             action
             for action, meaning in enumerate(env.unwrapped.get_action_meanings())
             if meaning == "NOOP"
         ][0]
-        self.stacked_frames = StackedFrames(4, resolution_shape)
-        self.previous_state: np.ndarray = None
-        self.info = {}
+        self.stacked_frames: StackedFrames = StackedFrames(4, resolution_shape)
+        self.previous_state: NDArray[np.uint8] = np.zeros(
+            (4, *resolution_shape), dtype=np.uint8
+        )
+        self.info: Dict = {}
 
-    def reset(self, **kwargs) -> tuple:
+    def reset(self, **kwargs) -> Tuple[NDArray[np.uint8], Dict]:
         """
         Reset the environment
         Play no-op action between 1 and 30 frames at the beginning of the game
@@ -52,12 +60,15 @@ class AtariWrapper(gym.Wrapper):
         """
         if self.has_to_reset:
             self.has_to_reset = False
+            state: NDArray[np.uint8]
+            info: Dict
             state, info = self.env.reset()
             self.lives = info["lives"]
             # Play no-op action between 1 and 30 frames at the beginning of the game
             # for play only
             if self.play:
                 for _ in range(random.randint(1, 30)):
+                    done: bool
                     state, _, done, _, info = self.env.step(self.no_op_action)
                     if info["lives"] != self.lives:
                         done = True
@@ -72,35 +83,41 @@ class AtariWrapper(gym.Wrapper):
 
         return self.stacked_frames.get_frames(), info
 
-    def step(self, action) -> tuple:
+    def step(
+        self, action: np.uint8
+    ) -> Tuple[NDArray[np.uint8], float, bool, bool, Dict]:
         """
         Step the environment with the given action
         Repeat the action self.skip_frames times and stack the frames
 
         Parameters
         ----------
-        action : int
+        action : np.uint8
             Action to take
 
         Returns
         -------
-        stacked_frames : np.ndarray
-            Stacked frames (4, 84, 84)
+        stacked_frames : NDArray[np.uint8]
+            Stacked frames
         reward : float
             Reward
         terminated : bool
             Whether the agent reaches the terminal state
         truncated : bool
             Whether the truncation condition outside the scope of the MDP is satisfied
-        info : dict
+        info : Dict
             Information about the environment
         """
-        sum_reward = 0.0
-        next_state = self.previous_state
-        terminated_episode = False
-        has_truncated = False
+        sum_reward: float = 0.0
+        next_state: NDArray[np.uint8] = self.previous_state
+        terminated_episode: bool = False
+        terminated: bool = False
+        info: Dict = {}
+        has_truncated: bool = False
         for _ in range(self.skip_frames):
             self.previous_state = next_state
+            reward: float
+            truncated: bool
             next_state, reward, terminated, truncated, info = self.env.step(action)
             self.has_to_reset = terminated
             sum_reward += reward

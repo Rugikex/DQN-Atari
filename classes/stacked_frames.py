@@ -1,8 +1,9 @@
 from collections import deque
-from typing import Tuple
+from typing import Deque, Tuple
 
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 
 
 class StackedFrames:
@@ -16,40 +17,41 @@ class StackedFrames:
     """
 
     def __init__(self, stack_size: int, resolution: Tuple[int, int] = (84, 84)) -> None:
-        self._frames: deque = deque(maxlen=stack_size)
-        self.resolution = resolution
+        self._frames: Deque[NDArray[np.uint8]] = deque(maxlen=stack_size)
+        self.resolution: Tuple[int, int] = resolution
 
     def _preprocess_frame(
-        self, frame: np.ndarray, previous_frame: np.ndarray
-    ) -> np.ndarray:
+        self, frame: NDArray[np.uint8], previous_frame: NDArray[np.uint8]
+    ) -> NDArray[np.uint8]:
         """
         Preprocess the frame before appending it to the stack
 
         Parameters
         ----------
-        frame : np.ndarray
+        frame : NDArray[np.uint8]
             Current frame
-        previous_frame : np.ndarray
+        previous_frame : NDArray[np.uint8]
             Previous frame
 
         Returns
         -------
-        resized_frame : np.ndarray
+        resized_frame : NDArray[np.uint8]
             Resized frame
         """
         # Take maximum of current and previous frame rgb values
-        max_frame = np.maximum(frame, previous_frame)
+        max_frame: NDArray[np.uint8] = np.maximum(frame, previous_frame)
 
         # Extract luminance from the frame
-        luminance_frame = cv2.cvtColor(max_frame, cv2.COLOR_BGR2YUV)[:, :, 0]
+        luminance_frame: NDArray[np.uint8] = cv2.cvtColor(max_frame, cv2.COLOR_BGR2YUV)[
+            :, :, 0
+        ]
 
         # Resize the Y component to 84x84
-        resized_frame = cv2.resize(
+        resized_frame: NDArray[np.uint8] = cv2.resize(
             luminance_frame, self.resolution, interpolation=cv2.INTER_AREA
         )
 
-        # Convert to uint8 to save memory
-        return resized_frame.astype(np.uint8)
+        return resized_frame
 
     def append(self, frame: np.ndarray, previous_frame: np.ndarray) -> None:
         """

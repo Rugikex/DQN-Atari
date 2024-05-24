@@ -10,6 +10,7 @@ def main():
 
     parser.add_argument(
         "action",
+        type=str,
         choices=["train", "retrain", "play"],
         help="Specify 'train', 'retrain' or 'play'",
     )
@@ -33,7 +34,9 @@ def main():
     if args.repeat < 1:
         raise Exception("The number of repeats must be greater than 0")
 
-    render_mode = "human" if args.action == "play" and not args.record else "rgb_array"
+    render_mode: str = (
+        "human" if args.action == "play" and not args.record else "rgb_array"
+    )
 
     env = gym.make(
         args.game_name,
@@ -46,7 +49,7 @@ def main():
         render_mode=render_mode,
     )
 
-    agent = AtariAgent(args.game_name, env, play=args.action == "play")
+    agent: AtariAgent = AtariAgent(args.game_name, env, play=args.action == "play")
 
     if args.action == "train":
         agent.train(args.repeat, args.name)
