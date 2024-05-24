@@ -20,7 +20,9 @@ class AtariWrapper(gym.Wrapper):
         Whether to play the game or train the agent
     """
 
-    def __init__(self, env, skip_frames=4, play=False) -> None:
+    def __init__(
+        self, env, skip_frames=4, play=False, resolution_shape=(84, 84)
+    ) -> None:
         super().__init__(env)
         self.skip_frames = skip_frames
         self.play = play
@@ -31,7 +33,7 @@ class AtariWrapper(gym.Wrapper):
             for action, meaning in enumerate(env.unwrapped.get_action_meanings())
             if meaning == "NOOP"
         ][0]
-        self.stacked_frames = StackedFrames(4)
+        self.stacked_frames = StackedFrames(4, resolution_shape)
         self.previous_state: np.ndarray = None
         self.info = {}
 
@@ -118,7 +120,7 @@ class AtariWrapper(gym.Wrapper):
 
         return (
             self.stacked_frames.get_frames(),
-            np.sign(sum_reward).astype(np.float32),
+            np.sign(sum_reward).astype(np.int8),
             terminated,
             has_truncated,
             info,

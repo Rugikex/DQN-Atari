@@ -88,7 +88,7 @@ class AtariAgent:
             state, reward, done, _, _ = self.env.step(action)
 
             # Store the transition in the replay memory
-            self.replay_memory.append((memory_state, action, reward, state, done))
+            self.replay_memory.append(memory_state, action, reward, state, done)
             memory_state = state
 
             if done:
@@ -184,7 +184,7 @@ class AtariAgent:
 
     def _update_q_network(
         self,
-        minibatch: dict,
+        minibatch: tuple,
     ) -> float:
         """
         Update the Q-network using the minibatch
@@ -200,15 +200,13 @@ class AtariAgent:
             Loss value
         """
         # Unpack the minibatch
-        states, actions, rewards, next_states, dones = zip(*minibatch)
+        states, actions, rewards, next_states, dones = minibatch
 
         # Convert data to PyTorch tensors
-        states = torch.as_tensor(np.array(states), dtype=torch.float32).to(DEVICE)
+        states = torch.as_tensor(states, dtype=torch.float32).to(DEVICE)
         actions = torch.as_tensor(actions, dtype=torch.int64).to(DEVICE)
-        rewards = torch.as_tensor(rewards, dtype=torch.float32).to(DEVICE)
-        next_states = torch.as_tensor(np.array(next_states), dtype=torch.float32).to(
-            DEVICE
-        )
+        rewards = torch.as_tensor(rewards, dtype=torch.int8).to(DEVICE)
+        next_states = torch.as_tensor(next_states, dtype=torch.float32).to(DEVICE)
         not_dones = torch.logical_not(torch.as_tensor(dones, dtype=torch.bool)).to(
             DEVICE
         )
@@ -329,7 +327,7 @@ class AtariAgent:
                 state, reward, done, _, _ = self.env.step(action)
 
                 # Store the transition in the replay memory
-                self.replay_memory.append((memory_state, action, reward, state, done))
+                self.replay_memory.append(memory_state, action, reward, state, done)
                 memory_state = state
 
                 if self.steps % 4 == 0 and len(self.replay_memory) >= START_UPDATE:

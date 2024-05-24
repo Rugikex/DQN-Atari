@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Tuple
 
 import cv2
 import numpy as np
@@ -14,8 +15,9 @@ class StackedFrames:
         Number of frames to stack
     """
 
-    def __init__(self, stack_size: int) -> None:
+    def __init__(self, stack_size: int, resolution: Tuple[int, int] = (84, 84)) -> None:
         self._frames: deque = deque(maxlen=stack_size)
+        self.resolution = resolution
 
     def _preprocess_frame(
         self, frame: np.ndarray, previous_frame: np.ndarray
@@ -43,7 +45,7 @@ class StackedFrames:
 
         # Resize the Y component to 84x84
         resized_frame = cv2.resize(
-            luminance_frame, (84, 84), interpolation=cv2.INTER_AREA
+            luminance_frame, self.resolution, interpolation=cv2.INTER_AREA
         )
 
         # Convert to uint8 to save memory
