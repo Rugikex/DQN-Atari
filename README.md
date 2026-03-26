@@ -7,7 +7,7 @@ The goal of this project is to reproduce the implementation detailed in the arti
 
 ## Installation
 
-The code is written in Python 3.13.12 and uses PyTorch 2.1.0 avec CUDA 13.0. The dependencies are listed in the `pyproject.toml` file.
+The code is written in Python 3.13.12 and uses PyTorch 2.1.0 with CUDA 13.0. The dependencies are listed in the `pyproject.toml` file.
 
 First, create a virtual environment with poetry and install the dependencies with the following command:
 
