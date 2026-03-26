@@ -1,6 +1,6 @@
 import os
 
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 
 def convert_mp4_to_gif(mp4_file: str, gif_file: str, fps: int = 30):
@@ -24,7 +24,7 @@ def convert_mp4_to_gif(mp4_file: str, gif_file: str, fps: int = 30):
     if not os.path.exists(os.path.dirname(gif_file)):
         os.makedirs(os.path.dirname(gif_file))
 
-    video.write_gif(gif_file, fps=fps, program="ffmpeg")
+    video.write_gif(gif_file, fps=fps)
 
 
 if __name__ == "__main__":

@@ -64,9 +64,16 @@ class AtariWrapper(gym.Wrapper):
             info: Dict
             state, info = self.env.reset()
             self.lives = info["lives"]
+            # Some games require a "FIRE" action to start the game, so we take it if it's available
+            fire_actions = [
+                action for action, meaning in enumerate(self.env.unwrapped.get_action_meanings())
+                if meaning == "FIRE"
+            ]
+            if fire_actions:
+                state, _, _, _, info = self.env.step(fire_actions[0])
             # Play no-op action between 1 and 30 frames at the beginning of the game
-            # for play only
-            if self.play:
+            # for training to add some randomness to the initial state
+            if not self.play:
                 for _ in range(random.randint(1, 30)):
                     done: bool
                     state, _, done, _, info = self.env.step(self.no_op_action)
@@ -74,6 +81,8 @@ class AtariWrapper(gym.Wrapper):
                         done = True
                     if done:
                         state, info = self.env.reset()
+                        if fire_actions:
+                            state, _, _, _, info = self.env.step(fire_actions[0])
 
             self.stacked_frames.reset(state)
             self.previous_state = state

@@ -6,20 +6,26 @@ authors = ["Tanguy Malandain"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
-black = "^23.11.0"
-torch = "^2.1.1"
-torchaudio = "^2.1.1"
-torchvision = "^0.16.1"
+python = ">=3.11,<3.14"
+black = "^26.3.1"
+torch = { version = "^2.10.0+cu130", source = "pytorch-gpu" }
+torchaudio = { version = "^2.10.0+cu130", source = "pytorch-gpu" }
+torchvision = { version = "^0.25.0+cu130", source = "pytorch-gpu" }
+setuptools = "81.0"
 
 [tool.poetry.group.dev.dependencies]
-gymnasium = {extras = ["accept-rom-license", "atari"], version = "^0.29.1"}
-matplotlib = "^3.8.2"
-moviepy = "^1.0.3"
-numpy = "^1.26.2"
-opencv-python = "^4.8.1.78"
-tensorboard = "^2.15.1"
-tqdm = "^4.66.1"
+gymnasium = {extras = ["accept-rom-license", "atari"], version = "^1.2.3"}
+matplotlib = "^3.10.8"
+moviepy = "^2.2.1"
+numpy = "^2.4.3"
+opencv-python = "^4.13.0.92"
+tensorboard = "^2.20.0"
+tqdm = "^4.67.3"
+
+[[tool.poetry.source]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu130"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

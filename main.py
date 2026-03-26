@@ -1,8 +1,11 @@
 import argparse
 
+import ale_py
 import gymnasium as gym
 
 from classes.agent import AtariAgent
+
+gym.register_envs(ale_py)
 
 
 def main():

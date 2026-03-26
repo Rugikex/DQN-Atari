@@ -42,11 +42,9 @@ class StackedFrames:
         max_frame: NDArray[np.uint8] = np.maximum(frame, previous_frame)
 
         # Extract luminance from the frame
-        luminance_frame: NDArray[np.uint8] = cv2.cvtColor(max_frame, cv2.COLOR_BGR2YUV)[
-            :, :, 0
-        ]
+        luminance_frame: NDArray[np.uint8] = cv2.cvtColor(max_frame, cv2.COLOR_RGB2GRAY)
 
-        # Resize the Y component to 84x84
+        # Resize the frame to the desired resolution
         resized_frame: NDArray[np.uint8] = cv2.resize(
             luminance_frame, self.resolution, interpolation=cv2.INTER_AREA
         )

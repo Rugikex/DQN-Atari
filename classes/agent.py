@@ -6,7 +6,7 @@ import time
 from typing import Deque, Dict, List, Optional, Tuple
 
 import gymnasium as gym
-from gymnasium.wrappers.record_video import RecordVideo
+from gymnasium.wrappers import RecordVideo
 import numpy as np
 from numpy.typing import NDArray
 import torch
@@ -25,10 +25,10 @@ EPSILON_SECOND_STEP: int = 10_000_000
 GAMMA: float = 0.99
 MINIBATCH_SIZE: int = 32
 PLAY_TRY: int = 5
-REPLAY_MEMORY_MAXLEN: int = 1_000_000
+REPLAY_MEMORY_MAXLEN: int = 500_000
 SECOND_PER_HOUR: int = 3_600
 START_UPDATE: int = 50_000
-STEPS_PER_EPISODE: int = 2_000
+STEPS_PER_EPISODE: int = 27_000
 UPDATE_TARGET_NETWORK: int = 10_000
 
 print(f"Using {DEVICE} device")
@@ -60,8 +60,10 @@ class AtariAgent:
         self.target_network: DeepQNetwork = DeepQNetwork(env.action_space.n).to(DEVICE)
         self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval()  # Target network is not trained
-        self.optimizer: torch.optim.RMSprop = torch.optim.RMSprop(
-            self.online_network.parameters(), lr=0.000_25, alpha=0.95, eps=0.01
+        self.optimizer = torch.optim.Adam(
+            self.online_network.parameters(),
+            lr=1e-4,
+            eps=1.5e-4,
         )
         self.policy: EpsilonGreedyPolicy
         if play:
@@ -152,7 +154,7 @@ class AtariAgent:
         else:
             # Exploitation: choose the action with the highest Q-value
             observation = (
-                torch.as_tensor(state, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+                torch.as_tensor(state, dtype=torch.float32).div(255.0).unsqueeze(0).to(DEVICE)
             )
             # Inference part
             self.online_network.eval()
@@ -225,18 +227,18 @@ class AtariAgent:
         states, actions, rewards, next_states, dones = minibatch
 
         # Convert data to PyTorch tensors
-        torch_states: torch.Tensor = torch.as_tensor(states, dtype=torch.float32).to(
+        torch_states: torch.Tensor = torch.as_tensor(states, dtype=torch.float32).div(255.0).to(
             DEVICE
         )
         torch_actions: torch.Tensor = torch.as_tensor(actions, dtype=torch.int64).to(
             DEVICE
         )
-        torch_rewards: torch.Tensor = torch.as_tensor(rewards, dtype=torch.int8).to(
+        torch_rewards: torch.Tensor = torch.as_tensor(rewards, dtype=torch.float32).to(
             DEVICE
         )
         torch_next_states: torch.Tensor = torch.as_tensor(
             next_states, dtype=torch.float32
-        ).to(DEVICE)
+        ).div(255.0).to(DEVICE)
         torch_not_dones: torch.Tensor = torch.logical_not(
             torch.as_tensor(dones, dtype=torch.bool)
         ).to(DEVICE)
@@ -285,7 +287,7 @@ class AtariAgent:
         """
         self.model_name = model_name
         model_path: str = self._get_model_path()
-        states: Dict = torch.load(model_path)
+        states: Dict = torch.load(model_path, weights_only=False)
         self.online_network.load_state_dict(states["state_dict"])
         self.target_network.load_state_dict(states["target_state_dict"])
         self.optimizer.load_state_dict(states["optimizer"])
@@ -461,6 +463,7 @@ class AtariAgent:
                 os.path.join("videos", self.game_name),
                 disable_logger=True,
                 name_prefix=f"{self.model_name}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}",
+                episode_trigger=lambda x: True
             )
             self.env.metadata["render_fps"] = 30
 
@@ -479,9 +482,6 @@ class AtariAgent:
             info: Dict
             state, info = self.env.reset()
 
-            if is_recording:
-                self.env.start_video_recorder()
-
             while True:
                 action: np.uint8 = self._get_action(state)
 
@@ -493,9 +493,9 @@ class AtariAgent:
                 total_unclipped_reward += info["real_reward"]
                 total_steps += 1
 
-                # Stop the recording after 5_000 steps
+                # Stop the recording after STEPS_PER_EPISODE steps
                 # This is to avoid looping forever
-                if is_recording and total_steps == 5_000:
+                if is_recording and total_steps == STEPS_PER_EPISODE:
                     break
 
                 if done:

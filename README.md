@@ -2,28 +2,27 @@
 
 ## Introduction
 
-This repository contains the code for the article "Human-level control through deep reinforcement learning" by Volodymyr Mnih et al. (2015). The code is based on the [original implementation](content/article.pdf)
-The goal of this project is to reproduce the implementation of the article and to train the model on the Atari game Breakout.
+This repository contains the code for the article "Human-level control through deep reinforcement learning" by Volodymyr Mnih et al. (2015). The code is based on the [original paper](content/article.pdf).
+The goal of this project is to reproduce the implementation detailed in the article and to train the model on the Atari game Breakout.
 
 ## Installation
 
-The code is written in Python 3.11.5 and uses PyTorch 2.1.0 avec CUDA 12.1. The dependencies are listed in the file `pyproject.toml`.
+The code is written in Python 3.13.12 and uses PyTorch 2.1.0 avec CUDA 13.0. The dependencies are listed in the `pyproject.toml` file.
 
-In first, create a virtual environment and with poetry, install the dependencies with the following command:
+First, create a virtual environment with poetry and install the dependencies with the following command:
 
 ```bash
 poetry install
-poetry shell
+poetry env activate
 ```
 
-If you have a problem with the installation of PyTorch, you can install it with the following command:
+If you encounter any issues with the PyTorch installation, you can force-reinstall it using pip:
 
 ```bash
 pip install --upgrade --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-You can change the CUDA version in the URL.\
-For more information, please refer to the [PyTorch website](https://pytorch.org/get-started/locally/).
+> **Note**: You can change the CUDA version in the URL. For more information, please refer to the [PyTorch website](https://pytorch.org/get-started/locally/).
 
 
 ## Usage
@@ -31,20 +30,20 @@ For more information, please refer to the [PyTorch website](https://pytorch.org/
 To train the model on the Atari game Breakout, run the following command:
 
 ```bash
-python main.py play Breakout-v4 --name model_name
+python main.py train Breakout-v4 --name model_name
 ```
 
-When the model is trained, the model is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth` where `NAME` is the name given in the arguments and `SUFFIX` is the number of hours of training or best or last.
+Once trained, the model is saved in the folder `models/Breakout-v4` as `{NAME}_{SUFFIX}.pt`. `NAME` corresponds to the argument provided and `SUFFIX` represents the number of training hours, `best` or `last`.
 
-To play with the model, run the following command:
+To play the game using the trained model, run:
 
 ```bash
 python main.py play Breakout-v4 --name model_name
 ```
 
-By default, the model choosen is the last model trained, but you can specify the suffix of the model if wanted.
+By default, the script loads the most recently trained model (`last`), but you can specify a particular suffix if needed.
 
-For more information on the arguments, run the following command:
+For more information on arguments, run:
 
 ```bash
 python main.py --help
@@ -71,67 +70,80 @@ options:
   --record              Record the game
 ```
 
-**Warning**: The name of the model must not end with `_{NUMBER}`, `_best` or `_last` as these names are reserved for the saving process.
+**Warning**: Do not end your model with `_{NUMBER}`, `_best` or `_last`. These suffixes are reserved for the saving process.
 
-## Explanation of the implementation
+## Implementation Details & Deviations
 
-The pseudo-code of the algorithm is given in the article, but some details are implemented differently in the code. The main difference is the epsilon decay. In the article, the epsilon decay in one linear decay from 1 to 0.1 in 1 million frames. In the code, the epsilon decay is linear from 1 to 0.1 in 1 million frames, then another linear decay from 0.1 to 0.01 in 10 million frames. Another minor difference is the loss function, the optimized loss function in the article is difficult to understand, it deals with squarred error between -1 and 1, which is not possible, instead the loss function is the Huber loss with a delta of 1.
+While the core algorithm faithfully follows the pseudo-code provided in the original paper, a few technical modifications were made to improve stability and accommodate hardware constraints.
 
-The training process about the number of steps, episodes or hours is not implemented. In my case, I trained the model with hours because it is easier to estimate the time of training and I needed my computer for other tasks. The training process is stopped when the model is trained for the number of hours specified in the arguments.
+### 1. Algorithm Tweaks
 
-The model is saved every hour, it contains the weights of the model and the target model, the optimizer state, the number of steps, episodes and hours of training. Others parameters are save for retraining.<br>
-It is saved in the folder `models/game_name` with the name `{NAME}_{SUFFIX}.pth` where `NAME` is the name given in the arguments and `SUFFIX` is the number of hours of training or best or last. Last is the same as the last number of hours of training.<br>
+* **Epsilon Decay**: The original paper uses a single linear decay from 1.0 to 0.1 over 1 million frames. In this implementation, the decay occurs in two phases: a linear decay from 1.0 to 0.1 over 1 million frames, followed by a second linear decay from 0.1 to 0.01 over the next 10 million frames. This encourages deeper exploitation later in the training.
+
+* **Loss Function**: The error clipping described in the paper (dealing with squared errors clamped between -1 and 1) can be ambiguous to implement. To cleanly handle outliers and gradients, this code replaces it with the Huber Loss (with a delta of 1).
+
+* **Optimizer**: Adam instead of RMSProp.
+
+### 2. Time-Based Training Schedule
+Instead of relying on a hard limit of steps or episodes, the training loop is governed by wall-clock time (hours). This choice was made for practical reasons, allowing for better personal resource management and predictable computer availability. The training process automatically halts once the specified duration is reached.
+
+### 3. State Checkpointing
+
+The training state is saved every hour. To allow for seamless retraining or pausing, each checkpoint includes:
+* Online and target model weights
+* Optimizer states
+* Current number of steps, episodes, and hours elapsed
+* Other hyperparameters required to resume training
+
+Checkpoints are stored in `models/game_name/{NAME}_{SUFFIX}.pt`. The `last` suffix is simply a convenient pointer to the last checkpoint saved.
 
 ## Results
 
-The model presented below is trained on the game Breakout for 50 hours, 54853 episodes and 11709224 steps.
+The model showcased below was trained on the game Breakout for a total of **50 hours**, encompassing **192,405 episodes** and **53,478,161 steps**. It was constructed by taking the first **42 hours** of the initial training run and continuing with **8 hours** of the second phase\
+This specific checkpoint was selected as the **"best"** model from my implementaion: it achieved the highest moving average reward over the last 100 episodes.
 
-In this level, the agent didn't finish the game but has a real score of 420 points and a clipped score of 105 points, in 2945 steps.
+> **Note:** The gameplay footage presented below highlights one of the model's most successful runs (cherry-picked).
 
 ![Game_gif](content/game.gif)
 
-Here are the graphs of the training process, there is 5 colors because the model was trained 5 times.
+### Training Metrics
 
-**Epsilon at the end of the episode**<br>
+The graphs below illustrate the training progression. The dual-color plotting represents two distinct training phases:
+
+* **Orange line:** The initial training run spanning 50 hours.
+* **Blue line:** A **20-hour** retraining phase that branched off from the 42-hour mark of the first model. During this phase, the minimum epsilon was manually reduced to **0.01** to encourage finer exploitation.
+
+**Epsilon at the end of the episode**\
 x-axis: episodes, y-axis: epsilon
 ![Graph_epsilon_end_episode](content/Epsilon_at_the_end_of_the_episode.svg)
 
-**Lengths of the episode**<br>
+**Lengths of the episode**\
 x-axis: episodes, y-axis: length of the episode
 ![Graph_lengths_episode](content/Lengths_Episode.svg)
 
-**Lengths of the last 100 episodes**<br>
+**Lengths of the last 100 episodes**\
 x-axis: 100 last episodes, y-axis: length of the episode
 ![Graph_lengths_last_100_episodes](content/Lengths_Last_100_episodes.svg)
 
-**Loss**<br>
+**Loss**\
 x-axis: steps, y-axis: loss
 ![Graph_loss](content/Loss.svg)
 
-**Rewards of the episode**<br>
+**Rewards of the episode**\
 x-axis: episodes, y-axis: reward of the episode
 ![Graph_rewards_episode](content/Rewards_Episode.svg)
 
-**Rewards of the last 100 episodes**<br>
+**Rewards of the last 100 episodes**\
 x-axis: 100 last episodes, y-axis: reward of the episode
 ![Graph_rewards_last_100_episodes](content/Rewards_Last_100_episodes.svg)
 
-## Failures and successes cases
+### Testing the Demo Model
 
-Here are some failures and successes cases of the model.
+If you want to test the pre-trained model shown in the demonstration above, follow these steps:
 
-### Failures
+1. **Move the model file**: Copy the `demo.pt` file from the `content/` folder to the `models/Breakout-v4/` directory.
+2. **Run the play command**: Use the following command to see the model in action:
 
-Saving the replay memory for retraining isn't a fiability solution, because the replay memory is too big and it takes more than 3 hours for saving it completely.
-
-The agent doesn't finish the game.
-
-The agent isn't stable, sometimes it is playing well and sometimes it is playing badly.
-
-### Successes
-
-To retrains the model, instead of saving the replay memory, the replay memory is initialised with the transitions of the last model until the replay memory size reaches the starting size to train the model. It isn't the same transitions but it is a good approximation.
-
-The Huber loss seems to be a good choice, the loss is decreasing and the model is learning.
-
-Some parameters given in the article for the RMSProp optimizer couldn't be used because the hyperparameters are not the same in PyTorch but the approximation to be the most similar is used and it is working.
+```bash
+python main.py play Breakout-v4 --name demo
+```
